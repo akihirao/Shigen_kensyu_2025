@@ -1,5 +1,5 @@
 
-# 水産研究・教育機構　資源評価研修@2025ページ
+# 水産研究・教育機構　令和７年度資源評価研修のページ
 
 このページは水産研究・教育機構が行っている令和７年度資源管理評価研修の資料置き場のページです。 
 
@@ -12,7 +12,7 @@
 
 * [馬場真哉先生の論文（馬場ら2024:水産海洋研究）の資料ページ](https://github.com/logics-of-blue/sea-temperature-trend-jogashima?tab=readme-ov-file)
 
-* [受講者が準備するデータについて](https://github.com/akihirao/Shigen_kensyu_2025/blob/main/slides/data_preparation.pdf)
+* [ハンズオン演習で準備するデータについて](data_preparation.md)
 
 * [準備データを用いたR解析コードの例](SST_ts_analyses.md)
 
