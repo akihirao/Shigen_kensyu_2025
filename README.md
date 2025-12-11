@@ -8,10 +8,11 @@
 研修では、講義とともには統計ソフトRを使ったハンズオン演習をおこないます。ハンズオン演習で必要となるデータの説明およびRのスクリプトの一部がまとめてあります。
 
 
-## 配布資料
-* [ハンズオン用のデータの準備について](https://github.com/akihirao/Shigen_kensyu_2025/blob/main/slides/data_preparation.pdf)
+## 研修資料
 
-## [日本沿岸域の海面水温データを用いたR解析コード例](SST_ts_analyses.md)
+* 馬場真哉先生の論文（馬場ら2024:水産海洋研究）の資料ページ https://github.com/logics-of-blue/sea-temperature-trend-jogashima?tab=readme-ov-file
 
+* [受講者が準備するデータについて](https://github.com/akihirao/Shigen_kensyu_2025/blob/main/slides/data_preparation.pdf)
 
+* [準備データを用いたR解析コードの例](SST_ts_analyses.md)
 
