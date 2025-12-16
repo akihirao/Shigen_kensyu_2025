@@ -155,7 +155,7 @@
                             SST_dev_ts_plot,
                             ncol = 1)
 
-![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-5-1.png)
+![](SST_ts_exo1_analyses_files/figure-markdown_strict/unnamed-chunk-5-1.png)
 
 # 黒潮続流北限緯度データの読み込み
 
@@ -246,7 +246,7 @@
                             Kuroshio_ts_plot,
                             ncol = 1)
 
-![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-8-1.png)
+![](SST_ts_exo1_analyses_files/figure-markdown_strict/unnamed-chunk-8-1.png)
 
 # 線形ガウス状態空間モデルの関数の定義
 
@@ -394,4 +394,4 @@
                                   model_arima1_plot,
                                   ncol = 1)
 
-![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-10-1.png)
+![](SST_ts_exo1_analyses_files/figure-markdown_strict/unnamed-chunk-10-1.png)
