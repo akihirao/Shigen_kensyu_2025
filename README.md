@@ -12,7 +12,9 @@
 
 * [馬場真哉先生の論文（馬場ら2024:水産海洋研究）の資料ページ](https://github.com/logics-of-blue/sea-temperature-trend-jogashima?tab=readme-ov-file)
 
-* [ハンズオン演習で準備するデータについて](data_preparation.md)
+* [ハンズオン演習で準備する水温データについて](data_preparation.md)
 
-* [準備データを用いたR解析コードの例](SST_ts_exo1_analyses.md)
+* [水温データの解析Rコードの例：外生変数なしモデル)](SST_ts_analyses.md)
 
+
+* [水温データの解析Rコードの例：外生変数ありモデル)](SST_ts_exo1_analyses.md)

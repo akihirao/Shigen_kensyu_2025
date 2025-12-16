@@ -34,6 +34,17 @@ rm(list=ls(all=TRUE))
 # 海面水温時系列データの読み込み
 
 ```{r message = FALSE, warning = FALSE, echo = TRUE}
+SST_monthly_df2ts <- function(SST_monthly_df){
+  start_year_month <- min(SST_monthly_df$Time)
+
+  # ts型に変換
+  SST_ts <- SST_monthly_df %>% 
+    dplyr::select(-Time) %>%             # 日付列と秋冬フラグを削除
+    ts(start = c(year(start_year_month), month(start_year_month)), 
+      frequency = 12) # ts型に変換(1998年1月開始。12か月1周期)
+}
+
+
 #沿岸域の海面水温情報
 #https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/engan.html
 #上記のサイトから、対象の海域番号を調べる
@@ -58,9 +69,10 @@ if(source=="url"){
   SST_monthly_avg <- SST_info %>% 
     mutate(Time = floor_date(date, "month")) %>% 
     group_by(Time) %>% 
-    summarise(Temp = mean(Temp, na.rm = TRUE)) %>% 
-    mutate(month=month(Time))
+    summarise(Temp = mean(Temp, na.rm = TRUE))
 
+  SST_ts <- SST_monthly_df2ts(SST_monthly_avg)
+  
   
 }else if(source=="local"){
   #ローカルにある海面水温データファイルを読み込む
@@ -73,8 +85,9 @@ if(source=="url"){
   SST_monthly_avg <- SST_info %>% 
     mutate(Time = floor_date(date, "month")) %>% 
     group_by(Time) %>% 
-    summarise(Temp = mean(Temp, na.rm = TRUE)) %>% 
-    mutate(month=month(Time))
+    summarise(Temp = mean(Temp, na.rm = TRUE))
+  
+  SST_ts <- SST_monthly_df2ts(SST_monthly_avg)
   
 }else if(source=="original"){
   #ローカルにある自前の海面水温データファイルを読み込む
@@ -84,64 +97,47 @@ if(source=="url"){
   
 }
 
-head(SST_monthly_avg)
-```
-
-# SST偏差系列の追加
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
-
-# 月毎のSSTを複数年に渡って平均
-monthly_avg_SST <- SST_monthly_avg %>%
-  group_by(month) %>%
-  summarise(Temp_avg=mean(Temp))
-
-# 海水温偏差系列の作成
-SST_monthly_avg <- SST_monthly_avg %>%
-  mutate(Dev_Temp = case_when(
-    month == 1 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==1,2]),
-    month == 2 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==2,2]),
-    month == 3 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==3,2]),
-    month == 4 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==4,2]),
-    month == 5 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==5,2]),
-    month == 6 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==6,2]),
-    month == 7 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==7,2]),
-    month == 8 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==8,2]),
-    month == 9 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==9,2]),
-    month == 10 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==10,2]),
-    month == 11 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==11,2]),
-    month == 12 ~ Temp - as.numeric(monthly_avg_SST[monthly_avg_SST$month==12,2])
-    
-  )
-)
-
-head(SST_monthly_avg)
-```
-
-# SSTデータセットをts型へ変換
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
-   
-start_year_month <- min(SST_monthly_avg$Time)
-
-# ts型に変換
-SST_ts <- SST_monthly_avg %>% 
-  dplyr::select(-Time) %>%             # 日付列と秋冬フラグを削除
-  ts(start = c(year(start_year_month), month(start_year_month)), 
-     frequency = 12) # ts型に変換(1998年1月開始。12か月1周期)
-
 head(SST_ts)
+```
+
+# SST偏差系列の作成
+
+```{r message = FALSE, warning = FALSE, echo = TRUE}
+stopifnot(frequency(SST_ts) == 12)  # 月次であることの確認
+
+temp <- as.numeric(SST_ts[, "Temp"])
+
+# 月番号（1〜12）を取得
+#mnum <- factor(cycle(SST_ts),levels = 1:12)
+mnum <- cycle(SST_ts)
+
+# 念のため 1:12 の factor に固定（欠月があっても 12要素の平均が返る）
+mfac <- factor(mnum, levels = 1:12)
+
+# 3) 月別の長期平均（気候値）を作る
+monthly_mean <- tapply(temp, mfac, function(v) mean(v, na.rm = TRUE))
+
+# 各観測に対応する月平均を展開
+clim <- monthly_mean[as.integer(mfac)]
+
+# 4) アノマリー（海水温偏差）を計算
+anom <- temp - clim
+
+
+SST_dev_ts <- cbind(Temp=SST_ts, Temp_dev=anom)
+
+head(SST_dev_ts)
 ```
 
 # SSTの時系列折れ線グラフ
 
 ```{r message = FALSE, warning = FALSE, echo = TRUE}
 # 時系列折れ線グラフ
-SST_ts_plot <- autoplot(SST_ts[,"Temp"]) +
+SST_ts_plot <- autoplot(SST_dev_ts[,"Temp"]) +
   labs(y = "Temperature (℃)", x = "Time") +
   ggtitle("Sea surface temperature")
 
-SST_dev_ts_plot <- autoplot(SST_ts[,"Dev_Temp"]) +
+SST_dev_ts_plot <- autoplot(SST_dev_ts[,"Temp_dev"]) +
   labs(y = "Temperature (℃)", x = "Time") +
   ggtitle("Sea surface temperature anomalies")
 
@@ -151,85 +147,10 @@ gridExtra::grid.arrange(SST_ts_plot,
                         ncol = 1)
 ```
 
-# 黒潮続流北限緯度データの読み込み
-### https://ocean.fra.go.jp/temp/O-K.html
-### 本数値データ(ダウングレード加工済み)は令和７年資源評価研修の教材として、水産資源研究所海洋環境部の使用許可を受けたものです。
-### 2次利用配布不可でお願いします!！！
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
-#黒潮続流北限緯度データの読み込み
-## gknmay9.txtファイルは本github上にはありません。別途の案内先から入手ください。
-Kuroshio_lat_limit <- read_table("gknmay9.txt",
-                                 col_names=FALSE) %>%
-  rename(Year="X1",
-         Month="X2",
-         Kuroshio="X4") %>%
-  mutate(Time=as.Date(paste0(Year,"-",Month,"-01"))) %>%
-  dplyr::select(Time, Kuroshio)
-
-
-if(!exists("SST_info")){
-  stop("あなたのデータセットではこれ以降の解析には対応していません")
-}
-
-
-# SSTデータの開始日にあわせて、黒潮続流データをトリミング
-Kuroshio_lat_limit <- Kuroshio_lat_limit %>%
-  filter(Time >= start_year_month) %>%
-  filter(Time < as.Date("2025-09-01")) 
-
-#　黒潮続流データの欠損値999をNAに置換
-Kuroshio_lat_limit <- Kuroshio_lat_limit %>%
-  mutate(Kuroshio=na_if(Kuroshio, 999))
-
-# SSTと黒潮続流データを結合
-SST_Kuroshio_monthly_avg <- left_join(SST_monthly_avg,
-                                      Kuroshio_lat_limit,
-                                      by = join_by(Time))
-SST_Kuroshio_first_time <- min(SST_Kuroshio_monthly_avg$Time)
-head(SST_Kuroshio_monthly_avg)
-
-```
-
-# SSTと黒潮続流のデータセットをts型に変換
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
-SST_Kuroshio_ts <- SST_Kuroshio_monthly_avg %>% 
-  dplyr::select(-Time) %>%             # 日付列と秋冬フラグを削除
-  ts(start = c(year(SST_Kuroshio_first_time), month(SST_Kuroshio_first_time)), 
-                    frequency = 12) # ts型に変換(1998年1月開始。12か月1周期)
-
-head(SST_Kuroshio_ts)
-```
-
-# SSTの時系列折れ線グラフ
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
-# 時系列折れ線グラフ
-SST_ts_plot2 <- autoplot(SST_Kuroshio_ts[,"Temp"]) +
-  labs(y = "Temperature (℃)", x = "Time") +
-  ggtitle("Sea surface temperature")
-
-SST_dev_ts_plot2 <- autoplot(SST_Kuroshio_ts[,"Dev_Temp"]) +
-  labs(y = "Temperature (℃)", x = "Time") +
-  ggtitle("Sea surface temperature anomalies")
-
-Kuroshio_ts_plot <- autoplot(SST_Kuroshio_ts[,"Kuroshio"]) +
-  labs(y = "Latitude (degree)", x = "Time") +
-  ggtitle("North limit of Kuroshio extension")
-
-
-# 並べてプロット
-gridExtra::grid.arrange(SST_ts_plot2, 
-                        SST_dev_ts_plot2,
-                        Kuroshio_ts_plot,
-                        ncol = 1)
-```
-
 # 線形ガウス状態空間モデルの関数の定義
 
 ```{r message = FALSE, warning = FALSE, echo = TRUE}
-make_ssm_kuroshio <- function(ts_data) {
+make_ssm_SST <- function(ts_data) {
   # モデルの構造を決める
   build_ssm <- SSModel(
     H = NA,
@@ -245,7 +166,7 @@ make_ssm_kuroshio <- function(ts_data) {
         ar = c(0, 0),       # 2次のAR成分
         d = 0,
         Q = 0
-      ) + Kuroshio, # 外生変数
+      ),
     data = ts_data
   )
   
@@ -266,7 +187,7 @@ make_ssm_kuroshio <- function(ts_data) {
           ar = artransform(pars[3:4]),
           d = 0,
           Q = exp(pars[5])
-        ) + Kuroshio,
+        ),
       data = ts_data
     )
   }
@@ -306,20 +227,20 @@ make_ssm_kuroshio <- function(ts_data) {
 # モデル関数の適用
 
 ```{r message = FALSE, warning = FALSE, echo = TRUE}
-list_kuroshio <- make_ssm_kuroshio(SST_Kuroshio_ts)
-fit_kuroshio    <- list_kuroshio[[1]]
-result_kuroshio <- list_kuroshio[[2]]
+list_SST <- make_ssm_SST(SST_dev_ts)
+fit_SST    <- list_SST[[1]]
+result_SST <- list_SST[[2]]
 
 
 # 推定結果 -------------------------------------------------------------
 
 # 平滑化推定量
-head(result_kuroshio$alphahat)
+head(result_SST$alphahat)
 
 
 # 係数の95%信頼区間
-res <- confint(result_kuroshio, level = 0.95)
-res[c("Kuroshio")] %>% lapply(head, n = 1)
+res <- confint(result_SST, level = 0.95)
+#res[c("Kuroshio")] %>% lapply(head, n = 1)
 
 
 # 状態の可視化
@@ -328,19 +249,19 @@ res[c("Kuroshio")] %>% lapply(head, n = 1)
 #  facets = TRUE
 #)
 
-model_level_plot <- autoplot(result_kuroshio$alphahat[,"level"]) +
+model_level_plot <- autoplot(result_SST$alphahat[,"level"]) +
   labs(y = "", x = "Time") +
   ggtitle("Level component")
 
-model_slope_plot <- autoplot(result_kuroshio$alphahat[,"slope"]) +
+model_slope_plot <- autoplot(result_SST$alphahat[,"slope"]) +
   labs(y = "", x = "Time") +
   ggtitle("Drift component")
 
-model_season_plot <- autoplot(result_kuroshio$alphahat[,"sea_dummy1"]) +
+model_season_plot <- autoplot(result_SST$alphahat[,"sea_dummy1"]) +
   labs(y = "", x = "Time") +
   ggtitle("Seasonal component")
 
-model_arima1_plot <- autoplot(result_kuroshio$alphahat[,"arima1"]) +
+model_arima1_plot <- autoplot(result_SST$alphahat[,"arima1"]) +
   labs(y = "", x = "Time") +
   ggtitle("Auto-regression component")
 
