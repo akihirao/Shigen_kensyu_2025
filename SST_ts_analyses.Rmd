@@ -91,13 +91,18 @@ if(source=="url"){
   
 }else if(source=="original"){
   #ローカルにある自前の海面水温データファイルを読み込む
-  SST_monthly_avg <- read_csv("SST_original.csv") %>%
-    mutate(month=month(Time))
+  SST_monthly_avg <- read_csv("SST_original.csv")
+  
+  SST_ts <- SST_monthly_df2ts(SST_monthly_avg)
+
 }else{
   
 }
 
 head(SST_ts)
+
+frequency(SST_ts)
+
 ```
 
 # SST偏差系列の作成
