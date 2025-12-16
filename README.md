@@ -14,5 +14,5 @@
 
 * [ハンズオン演習で準備するデータについて](data_preparation.md)
 
-* [準備データを用いたR解析コードの例](SST_ts_analyses.md)
+* [準備データを用いたR解析コードの例](SST_ts_exo1_analyses.md)
 
