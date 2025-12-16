@@ -14,7 +14,7 @@
 
 * [ハンズオン演習で準備する水温データについて](data_preparation.md)
 
-* [水温データの解析Rコードの例：外生変数なしモデル)](SST_ts_analyses.md)
+* [水温データの解析Rコードの例：外生変数なしモデル](SST_ts_analyses.md)
 
 
-* [水温データの解析Rコードの例：外生変数ありモデル)](SST_ts_exo1_analyses.md)
+* [水温データの解析Rコードの例：外生変数ありモデル](SST_ts_exo1_analyses.md)
