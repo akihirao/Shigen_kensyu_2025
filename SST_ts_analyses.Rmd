@@ -50,11 +50,13 @@ SST_monthly_df2ts <- function(SST_monthly_df){
 #上記のサイトから、対象の海域番号を調べる
 #（例えば、岩手県南部沿岸の海域番号は113)
 
-#ウェブサイトから海面水温データを読み込む
-#source <- "original" # local (default), url or original
-source <- "local" # local (default), url or original
 
-if(source=="url"){
+# 水温データのソースの指定: local, url, or, original
+source <- "local" # local (default), url, or original
+# local:　local環境にある提供データ: ulr: 気象庁公開のデータ; original: 自身が用意されたオリジナルデータ
+
+
+if(source=="url"){ #ウェブサイトから海面水温データを読み込む場合
   sea_are_id <- 113　#岩手県南部沿岸海域の例
   url <- paste0("https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/txt/area",
                 sea_are_id,
@@ -74,8 +76,7 @@ if(source=="url"){
   SST_ts <- SST_monthly_df2ts(SST_monthly_avg)
   
   
-}else if(source=="local"){
-  #ローカルにある海面水温データファイルを読み込む
+}else if(source=="local"){ #ローカルにある海面水温データファイルを読み込む場合
   SST_info <- read_csv("SST_area133.csv") %>%  #岩手県南部沿岸海域の海面水温データ（デフォルト）
     rename(Temp="Temp.") %>% 
     mutate(date=as.Date(paste0(yyyy,"-",mm,"-",dd))) %>% 
@@ -89,28 +90,40 @@ if(source=="url"){
   
   SST_ts <- SST_monthly_df2ts(SST_monthly_avg)
   
-}else if(source=="original"){
-  #ローカルにある自前の海面水温データファイルを読み込む
-  SST_monthly_avg <- read_csv("SST_original.csv")
+}else if(source=="original"){ #ローカルに置いたオリジナルの海面水温データファイルを読み込む場合
+  year_month_temp <- read_csv("SST_original.csv")
   
-  SST_ts <- SST_monthly_df2ts(SST_monthly_avg)
+  SST_ts <- ts(year_month_temp$Temp,
+               start = c(year_month_temp$Year[1], year_month_temp$Month[1]),
+               frequency = 12) # ts型に変換(12か月1周期)
+  names(SST_ts) <- "Temp"
 
 }else{
   
 }
 
 head(SST_ts)
-
-frequency(SST_ts)
-
 ```
+
+# tsオブジェクトの内容の確認
+
+```{r message = FALSE, warning = FALSE, echo = TRUE}
+
+frequency(SST_ts)   # 周波数（12）
+start(SST_ts)       # 開始（1982, 1）
+end(SST_ts)         # 終了（2025, 10）
+cycle(SST_ts)       # 各観測の月番号（1～12）
+time(SST_ts)        # 小数年（1982.000, 1982.083...）
+window(SST_ts, start = c(1991, 1), end = c(2020, 12))  # 期間抽出
+```
+
 
 # SST偏差系列の作成
 
 ```{r message = FALSE, warning = FALSE, echo = TRUE}
 stopifnot(frequency(SST_ts) == 12)  # 月次であることの確認
 
-temp <- as.numeric(SST_ts[, "Temp"])
+temp <- as.numeric(SST_ts)
 
 # 月番号（1〜12）を取得
 #mnum <- factor(cycle(SST_ts),levels = 1:12)
