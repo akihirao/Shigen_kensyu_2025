@@ -1,18 +1,3 @@
----
-title: "SST_trend_analysis"
-author: "Akira Hirao"
-date: "`r Sys.Date()`"
-output:
-  md_document:
-  toc: true
-variant: markdown_github
-html_document:
-  toc: true
----
-
-# 解析環境の設定
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
 ## 各種ライブラリーの読み込み
 library(KFAS)
 library(tidyverse)
@@ -29,11 +14,7 @@ setwd(cur_dir)
 
 # initialize
 rm(list=ls(all=TRUE))
-```
 
-# 海面水温時系列データの読み込み
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
 SST_monthly_df2ts <- function(SST_monthly_df){
   start_year_month <- min(SST_monthly_df$Time)
 
@@ -103,11 +84,7 @@ if(source=="url"){ #ウェブサイトから海面水温データを読み込む
 }
 
 head(SST_ts)
-```
 
-# tsオブジェクトの内容の確認
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
 
 frequency(SST_ts)   # 周波数（12）
 start(SST_ts)       # 開始（1982, 1）
@@ -115,12 +92,7 @@ end(SST_ts)         # 終了（2025, 10）
 cycle(SST_ts)       # 各観測の月番号（1～12）
 time(SST_ts)        # 小数年（1982.000, 1982.083...）
 window(SST_ts, start = c(1991, 1), end = c(2020, 12))  # 期間抽出
-```
 
-
-# SST偏差系列の作成
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
 stopifnot(frequency(SST_ts) == 12)  # 月次であることの確認
 
 temp <- as.numeric(SST_ts)
@@ -145,39 +117,7 @@ anom <- temp - clim
 SST_dev_ts <- cbind(Temp=SST_ts, Temp_dev=anom)
 
 head(SST_dev_ts)
-```
 
-# 月平均SSTのプロット
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
-
-monthly_mean_fac_tidy = tibble(Month=factor(1:12,
-                                        levels=(1:12)),
-       SST=as.numeric(monthly_mean)
-       )
-
-monthly_mean_tidy = tibble(Month=(1:12),
-       SST=as.numeric(monthly_mean)
-       )
-
-head(monthly_mean_tidy)
-
-plot_monthly_mean_SSST <- ggplot(data=monthly_mean_fac_tidy,
-                                 aes(x=Month,y=SST)
-                                 ) +
-  geom_point(size = 1) + 
-  geom_line(data=monthly_mean_tidy,
-            aes(x=Month,y=SST),linetype= "dashed") + 
-  #geom_smooth(method="loess", se =FALSE)
-  scale_x_discrete(
-    labels = function(x) sprintf("%02d", as.integer(x))
-  )
-  
-plot_monthly_mean_SSST
-```
-# SSTの時系列折れ線グラフ
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
 # 時系列折れ線グラフ
 SST_ts_plot <- autoplot(SST_dev_ts[,"Temp"]) +
   labs(y = "Temperature (℃)", x = "Time") +
@@ -191,11 +131,7 @@ SST_dev_ts_plot <- autoplot(SST_dev_ts[,"Temp_dev"]) +
 gridExtra::grid.arrange(SST_ts_plot, 
                         SST_dev_ts_plot,
                         ncol = 1)
-```
 
-# 線形ガウス状態空間モデルの関数の定義
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
 make_ssm_SST <- function(ts_data) {
   # モデルの構造を決める
   build_ssm <- SSModel(
@@ -268,11 +204,7 @@ make_ssm_SST <- function(ts_data) {
   return(list(fit_ssm, result_ssm))
   
 }
-```
 
-# モデル関数の適用
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
 list_SST <- make_ssm_SST(SST_dev_ts)
 fit_SST    <- list_SST[[1]]
 result_SST <- list_SST[[2]]
@@ -318,11 +250,7 @@ model_out_plot <- grid.arrange(model_level_plot,
                               model_arima1_plot,
                               ncol = 1)
 
-```
 
-# Rスクリプトの出力
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
 knitr::purl("SST_ts_analyses.Rmd", 
             output ="SST_ts_analyses.r",
             documentation = 0)

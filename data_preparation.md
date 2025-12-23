@@ -4,14 +4,14 @@
 
 
 ## 主催者提供の水温データ
-* [岩手県南部沿岸の海面水温データ](https://github.com/akihirao/Shigen_kensyu_2025/blob/main/SST_area133.csv)（ソース：[気象庁公開データ](https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/txt/area133.txt)）
-* 配布資料に含まれるので、事前準備の必要はありません。
+* 岩手県南部沿岸の海面水温データ（ソース：気象庁公開データ)
+* 研修前日までにメールで配布するファイル一式に含まれます。事前のダウンロードの必要はありません。
 * 日別平均値のデータセットですが、演習内でRで月別に集計して扱います。
 
 ## 受講者ご自身が用意した水温データ
 ### 1) 気象庁の公開データから任意の海域の海面水温を取得
-* [気象庁の日本沿岸域の海面水温情報のサイト](https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/engan.html)から任意の海域を選択し、データ(テキスト形式)をダウンロードして、csv形式で保存してください。
-* [気象庁公開データからの取得の流れ](https://github.com/akihirao/Shigen_kensyu_2025/blob/main/slides/how2get_sst.pdf)
+* 気象庁・日本沿岸域の海面水温情報のサイト https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/engan.html から任意の海域を選択し、日別平均海面水温データをダウンロードし、csv形式で保存してください。
+* 気象庁公開データの取得手順のスライド https://github.com/akihirao/Shigen_kensyu_2025/blob/main/slides/how2get_sst.pdf
 * 演習時にも入手方法を説明します。ネット接続環境にあれば事前準備の必要はありません。当日ネット接続不可の方は、事前に準備ください。
 * 気象庁公開データは日別で提供されていますが、演習内でRで月別に集計して扱います。
 
@@ -51,8 +51,10 @@ Year: 観測値の計測年; Month: 観測値の計測月;  Temp: 海面水温�
 
 ## その他の事前配布データ：黒潮続流北限緯度データ
 月別の平均海面水温の時系列データに対して、黒潮流路の影響を考慮するための外生変数として、黒潮続流北限緯度の時系列データを使用します。
-* 黒潮続流北限緯度のデータの2次配布は不可であることをご理解ください。
-* 受講者へは事前のメールにて、その他の配布資料とともにお送りします。
-* データソース https://ocean.fra.go.jp/temp/O-K.html
+* 研修前日までにメールで配布するファイル一式に含まれます。
+* 黒潮続流北限緯度のデータの2次配布は不可とさせていただきます。
 
 
+## データソースのリンク先
+* 気象庁・日本沿岸域の海面水温情報 https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/engan.html
+* 東北海区の水塊指標（ 水産研究・教育機構 塩釜庁舎） https://ocean.fra.go.jp/temp/O-K.html
