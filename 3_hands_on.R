@@ -1,18 +1,5 @@
----
-title: "SST_trend_analysis"
-author: "Akira Hirao"
-date: "`r Sys.Date()`"
-output:
-  md_document:
-  toc: true
-variant: markdown_github
-html_document:
-  toc: true
----
 
-# 解析環境の設定
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+# 解析環境の設定 ----------------------------
 ## 各種ライブラリーの読み込み
 library(KFAS)
 library(tidyverse)
@@ -21,14 +8,13 @@ library(forecast)
 
 library(gridExtra)
 
-
 # initialize
 rm(list=ls(all=TRUE))
-```
 
-# 海面水温時系列データの読み込み
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+# 海面水温時系列データの読み込み ----------------------------
+
+# 変換関数の定義
 SST_monthly_df2ts <- function(SST_monthly_df){
   start_year_month <- min(SST_monthly_df$Time)
 
@@ -39,12 +25,10 @@ SST_monthly_df2ts <- function(SST_monthly_df){
       frequency = 12) # ts型に変換(1998年1月開始。12か月1周期)
 }
 
-
 #沿岸域の海面水温情報
 #https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/engan.html
 #上記のサイトから、対象の海域番号を調べる
 #（例えば、岩手県南部沿岸の海域番号は113)
-
 
 # 水温データのソースの指定: local, url, or, original
 source <- "local" # local (default), url, or original
@@ -111,11 +95,10 @@ if(FALSE){
 }
 
 head(SST_ts)
-```
 
-# tsオブジェクトの内容の確認
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+
+# tsオブジェクトの内容の確認 ----------------------------
 
 frequency(SST_ts)   # 周波数（12）
 start(SST_ts)       # 開始（1982, 1）
@@ -123,21 +106,20 @@ end(SST_ts)         # 終了（2025, 10）
 cycle(SST_ts)       # 各観測の月番号（1～12）
 time(SST_ts)        # 小数年（1982.000, 1982.083...）
 window(SST_ts, start = c(1991, 1), end = c(2000, 12))  # 期間抽出
-```
 
-# SSTの時系列折れ線グラフ
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+# SSTの時系列折れ線グラフ ----------------------------
+
 SST_ts_source_plot <- autoplot(SST_ts) +
   labs(y = expression(Temperature~(degree*C)), x = "Time") +
   ggtitle("Sea surface temperature")
 
 plot(SST_ts_source_plot)
-```
 
-# SST偏差系列の作成
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+
+# SST偏差系列の作成 ----------------------------
+
 stopifnot(frequency(SST_ts) == 12)  # 月次であることの確認
 
 temp <- as.numeric(SST_ts)
@@ -162,11 +144,10 @@ anom <- temp - clim
 SST_dev_ts <- cbind(Temp=SST_ts, Temp_dev=anom)
 
 head(SST_dev_ts)
-```
 
-# 月平均SSTのプロット
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+
+# 月平均SSTのプロット ----------------------------
 
 monthly_mean_fac_tidy = tibble(Month=factor(1:12,
                                         levels=(1:12)),
@@ -191,17 +172,15 @@ plot_monthly_mean_SSST <- ggplot(data=monthly_mean_fac_tidy,
   )
   
 plot_monthly_mean_SSST
-```
 
-# SST偏差系列のプロット：autoplot
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+
+# SST偏差系列のプロット：autoplot ----------------------------
 autoplot(SST_dev_ts)
-```
 
-# SST偏差系列のプロット: ggplot
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+
+# SST偏差系列のプロット：ggplot ----------------------------
 SST_ts_plot <- autoplot(SST_dev_ts[,"Temp"]) +
   labs(y = expression(Temperature~(degree*C)), x = "Time") +
   ggtitle("Sea surface temperature")
@@ -215,13 +194,13 @@ SST_ts_source_plot <- gridExtra::grid.arrange(SST_ts_plot,
                                               SST_dev_ts_plot,
                                               ncol = 1)
 
-
 plot(SST_ts_source_plot)
-```
 
-# 線形ガウス状態空間モデルの関数の定義
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+
+
+# 線形ガウス状態空間モデルの関数の定義 ----------------------------
+
 make_ssm_SST <- function(ts_data) {
   # モデルの構造を決める
   build_ssm <- SSModel(
@@ -295,23 +274,21 @@ make_ssm_SST <- function(ts_data) {
   return(list(fit_ssm, result_ssm))
   
 }
-```
 
-# モデル関数の適用
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+
+
+# モデル関数の適用 ----------------------------
+
 list_SST <- make_ssm_SST(SST_dev_ts)
 fit_SST    <- list_SST[[1]]
 result_SST <- list_SST[[2]]
-```
 
-# 推定結果の確認
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+
+# 推定結果の確認 ----------------------------
 
 print(fit_SST$optim.out$par) #モデルの推定パラメーター
-
-# 推定結果 -------------------------------------------------------------
 
 # 平滑化推定量
 head(result_SST$alphahat)
@@ -357,11 +334,11 @@ model_out_plot <- grid.arrange(model_level_plot,
 
 plot(model_out_plot )
 
-```
 
-# モデルの残差の確認
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+
+# モデルの残差の確認 ----------------------------
+
 # 標準化残差
 std_obs_resid <- rstandard(result_SST, type = "recursive")
 
@@ -392,11 +369,10 @@ Box.test(std_obs_resid,
          lag = 24,
          type = "Ljung-Box")
 
-```
 
-# 水準変動の信頼区間の図示
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+# 水準変動の信頼区間の図示 ----------------------------
+
 level_tidy <- cbind(
   data.frame(time=time(SST_ts),
              SST=as.numeric(SST_ts),
@@ -418,11 +394,12 @@ ggsave("level_plot.png",
        plot = level_plot)
 
 level_plot
-```
 
-# ドリフト成分の図示
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
+
+
+# ドリフト成分の図示 ----------------------------
+
 drift_tidy <- cbind(
   data.frame(time=time(SST_ts),
              Temp=as.numeric(SST_ts),
@@ -446,12 +423,10 @@ ggsave("drift_plot.png",
        plot = drift_plot)
 
 drift_plot
-```
 
-# 予測 ----------------------------------------------------------------------
 
-```{r message = FALSE, warning = FALSE, echo = TRUE}
-# 簡単な方法
+
+# 予測 ----------------------------
 
 forecast_pred <- predict(result_SST$model,
                          interval="prediction",
@@ -460,11 +435,3 @@ forecast_pred <- predict(result_SST$model,
 
 print(forecast_pred)
 
-```
-
-# Rスクリプトの出力
-
-```{r message = FALSE, warning = FALSE, echo = TRUE}
-knitr::purl("SST_ts_analyses.Rmd", 
-            output ="SST_ts_analyses.r",
-            documentation = 2)

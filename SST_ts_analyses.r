@@ -1,3 +1,18 @@
+#' ---
+#' title: "SST_trend_analysis"
+#' author: "Akira Hirao"
+#' date: "`r Sys.Date()`"
+#' output:
+#'   md_document:
+#'   toc: true
+#' variant: markdown_github
+#' html_document:
+#'   toc: true
+#' ---
+#' 
+#' # 解析環境の設定
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 ## 各種ライブラリーの読み込み
 library(KFAS)
 library(tidyverse)
@@ -10,6 +25,10 @@ library(gridExtra)
 # initialize
 rm(list=ls(all=TRUE))
 
+#' 
+#' # 海面水温時系列データの読み込み
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 SST_monthly_df2ts <- function(SST_monthly_df){
   start_year_month <- min(SST_monthly_df$Time)
 
@@ -93,6 +112,10 @@ if(FALSE){
 
 head(SST_ts)
 
+#' 
+#' # tsオブジェクトの内容の確認
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 
 frequency(SST_ts)   # 周波数（12）
 start(SST_ts)       # 開始（1982, 1）
@@ -101,12 +124,20 @@ cycle(SST_ts)       # 各観測の月番号（1～12）
 time(SST_ts)        # 小数年（1982.000, 1982.083...）
 window(SST_ts, start = c(1991, 1), end = c(2000, 12))  # 期間抽出
 
+#' 
+#' # SSTの時系列折れ線グラフ
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 SST_ts_source_plot <- autoplot(SST_ts) +
   labs(y = expression(Temperature~(degree*C)), x = "Time") +
   ggtitle("Sea surface temperature")
 
 plot(SST_ts_source_plot)
 
+#' 
+#' # SST偏差系列の作成
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 stopifnot(frequency(SST_ts) == 12)  # 月次であることの確認
 
 temp <- as.numeric(SST_ts)
@@ -132,6 +163,10 @@ SST_dev_ts <- cbind(Temp=SST_ts, Temp_dev=anom)
 
 head(SST_dev_ts)
 
+#' 
+#' # 月平均SSTのプロット
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 
 monthly_mean_fac_tidy = tibble(Month=factor(1:12,
                                         levels=(1:12)),
@@ -157,8 +192,16 @@ plot_monthly_mean_SSST <- ggplot(data=monthly_mean_fac_tidy,
   
 plot_monthly_mean_SSST
 
+#' 
+#' # SST偏差系列のプロット：autoplot
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 autoplot(SST_dev_ts)
 
+#' 
+#' # SST偏差系列のプロット: ggplot
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 SST_ts_plot <- autoplot(SST_dev_ts[,"Temp"]) +
   labs(y = expression(Temperature~(degree*C)), x = "Time") +
   ggtitle("Sea surface temperature")
@@ -175,6 +218,10 @@ SST_ts_source_plot <- gridExtra::grid.arrange(SST_ts_plot,
 
 plot(SST_ts_source_plot)
 
+#' 
+#' # 線形ガウス状態空間モデルの関数の定義
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 make_ssm_SST <- function(ts_data) {
   # モデルの構造を決める
   build_ssm <- SSModel(
@@ -249,10 +296,18 @@ make_ssm_SST <- function(ts_data) {
   
 }
 
+#' 
+#' # モデル関数の適用
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 list_SST <- make_ssm_SST(SST_dev_ts)
 fit_SST    <- list_SST[[1]]
 result_SST <- list_SST[[2]]
 
+#' 
+#' # 推定結果の確認
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 
 print(fit_SST$optim.out$par) #モデルの推定パラメーター
 
@@ -303,6 +358,10 @@ model_out_plot <- grid.arrange(model_level_plot,
 plot(model_out_plot )
 
 
+#' 
+#' # モデルの残差の確認
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 # 標準化残差
 std_obs_resid <- rstandard(result_SST, type = "recursive")
 
@@ -334,6 +393,10 @@ Box.test(std_obs_resid,
          type = "Ljung-Box")
 
 
+#' 
+#' # 水準変動の信頼区間の図示
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 level_tidy <- cbind(
   data.frame(time=time(SST_ts),
              SST=as.numeric(SST_ts),
@@ -356,6 +419,10 @@ ggsave("level_plot.png",
 
 level_plot
 
+#' 
+#' # ドリフト成分の図示
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 drift_tidy <- cbind(
   data.frame(time=time(SST_ts),
              Temp=as.numeric(SST_ts),
@@ -380,6 +447,10 @@ ggsave("drift_plot.png",
 
 drift_plot
 
+#' 
+#' # 予測 ----------------------------------------------------------------------
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 # 簡単な方法
 
 forecast_pred <- predict(result_SST$model,
@@ -390,6 +461,11 @@ forecast_pred <- predict(result_SST$model,
 print(forecast_pred)
 
 
+#' 
+#' # Rスクリプトの出力
+#' 
+## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 knitr::purl("SST_ts_analyses.Rmd", 
             output ="SST_ts_analyses.r",
-            documentation = 0)
+            documentation = 2)
+
