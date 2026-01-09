@@ -9,11 +9,6 @@
     library(gridExtra)
 
 
-    ##作業場所の設定
-    cur_dir <- getwd()
-    #print(cur_dir)
-    setwd(cur_dir)
-
     # initialize
     rm(list=ls(all=TRUE))
 
@@ -42,23 +37,27 @@
 
 
     if(source=="url"){ #ウェブサイトから海面水温データを読み込む場合
-      sea_are_id <- 113　#岩手県南部沿岸海域の例
+      sea_are_id <- 315　#113 岩手県南部沿岸海域の例; 122: 釧路地方沿岸; 709: 与那国島; 315:佐渡島
       url <- paste0("https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/txt/area",
                     sea_are_id,
-                    "-past.txt")
+                    ".txt")
 
       SST_info <- read_csv(url) %>% 
+        slice(-n()) %>%
         rename(Temp="Temp.") %>% 
+        mutate(Temp = as.numeric(Temp)) %>%
         mutate(date=as.Date(paste0(yyyy,"-",mm,"-",dd))) %>% 
-        select(c(date,Temp,flag))
+        select(c(date,Temp,flag)) %>% 
+        filter(date <= as.Date("2025-12-31"))
       
       #　SSTを月別平均に集約
       SST_monthly_avg <- SST_info %>% 
-        mutate(Time = floor_date(date, "month")) %>% 
+        mutate(Time = floor_date(date, unit = "month")) %>% 
         group_by(Time) %>% 
         summarise(Temp = mean(Temp, na.rm = TRUE))
 
       SST_ts <- SST_monthly_df2ts(SST_monthly_avg)
+      SST_ts <- window(SST_ts, end = c(2025,12))
       
       
     }else if(source=="local"){ #ローカルにある海面水温データファイルを読み込む場合
@@ -69,11 +68,12 @@
       
       #　SSTを月別平均に集約
       SST_monthly_avg <- SST_info %>% 
-        mutate(Time = floor_date(date, "month")) %>% 
+        mutate(Time = floor_date(date, unit = "month")) %>% 
         group_by(Time) %>% 
         summarise(Temp = mean(Temp, na.rm = TRUE))
       
       SST_ts <- SST_monthly_df2ts(SST_monthly_avg)
+      SST_ts <- window(SST_ts, end = c(2025,12))
       
     }else if(source=="original"){ #ローカルに置いたオリジナルの海面水温データファイルを読み込む場合
       year_month_temp <- read_csv("SST_original.csv")
@@ -85,6 +85,14 @@
 
     }else{
       
+    }
+
+
+    #欠損データセットの作成
+    if(FALSE){
+      half_point <- trunc(length(time(SST_ts))/2)
+      NA_point <- c(half_point:(half_point+96))
+      SST_ts[NA_point] <- NA 
     }
 
     head(SST_ts)
@@ -104,7 +112,7 @@
 
     end(SST_ts)         # 終了（2025, 10）
 
-    ## [1] 2025   10
+    ## [1] 2025   12
 
     cycle(SST_ts)       # 各観測の月番号（1～12）
 
@@ -152,7 +160,7 @@
     ## 2022   1   2   3   4   5   6   7   8   9  10  11  12
     ## 2023   1   2   3   4   5   6   7   8   9  10  11  12
     ## 2024   1   2   3   4   5   6   7   8   9  10  11  12
-    ## 2025   1   2   3   4   5   6   7   8   9  10
+    ## 2025   1   2   3   4   5   6   7   8   9  10  11  12
 
     time(SST_ts)        # 小数年（1982.000, 1982.083...）
 
@@ -245,9 +253,9 @@
     ## 2022 2022.667 2022.750 2022.833 2022.917
     ## 2023 2023.667 2023.750 2023.833 2023.917
     ## 2024 2024.667 2024.750 2024.833 2024.917
-    ## 2025 2025.667 2025.750
+    ## 2025 2025.667 2025.750 2025.833 2025.917
 
-    window(SST_ts, start = c(1991, 1), end = c(2020, 12))  # 期間抽出
+    window(SST_ts, start = c(1991, 1), end = c(2000, 12))  # 期間抽出
 
     ##            Jan       Feb       Mar       Apr       May       Jun       Jul
     ## 1991 11.666774  8.995714  8.515161 10.665000 13.937419 17.752667 19.617419
@@ -260,26 +268,6 @@
     ## 1998 10.617742  7.308929  6.064839  8.494333 13.859032 16.076333 20.221935
     ## 1999 12.435161 10.033571  9.626129 11.411667 13.901290 18.011000 20.245806
     ## 2000 11.876774  9.153103  7.713226  8.779667 12.418065 16.020000 19.524839
-    ## 2001  8.866129  7.816071  9.556774 10.955667 12.979355 16.585000 20.379677
-    ## 2002  9.799032  7.615714  8.311935 10.061000 12.447742 14.728000 18.962581
-    ## 2003  9.173226  7.418929  6.073548  7.249000 10.621935 15.646000 17.096452
-    ## 2004 10.320968  7.822069  6.935806  6.803000  9.202903 14.162667 18.719355
-    ## 2005  9.822903  7.052143  6.438710  7.604333  9.979355 15.937000 18.550000
-    ## 2006  8.680323  5.915357  5.873871  7.428667 10.084194 14.279667 18.593548
-    ## 2007 11.023226  9.003214  8.173226  9.006333 11.366129 16.387667 18.030323
-    ## 2008 10.557419  7.139310  5.466129  5.790333 10.230645 14.340333 19.194839
-    ## 2009 10.182581  7.854643  6.554516  9.146333 10.995806 13.198333 16.770645
-    ## 2010  9.642903  6.701429  4.231935  6.825333 10.765161 15.076333 20.070323
-    ## 2011 10.705161  7.898929  6.374516  7.067667 10.576452 14.609333 20.519355
-    ## 2012  8.818387  5.570345  5.331290  9.022333 12.137097 15.055000 18.631290
-    ## 2013 10.207419  8.204286  5.835161  9.109000  7.863871 15.098333 18.360645
-    ## 2014 10.486129  8.197500  5.232581  4.937000  8.876129 16.783000 19.902258
-    ## 2015  9.190000  6.410000  3.710323  6.701333  9.963226 15.070000 19.939355
-    ## 2016 10.738387  8.452759  9.383871  8.729333 12.093548 16.298667 19.220323
-    ## 2017 11.080645  8.798571  8.346452  8.947000 10.593871 14.667667 19.527419
-    ## 2018 10.918065  9.641071  8.493548  9.757000 12.022581 15.764333 21.013871
-    ## 2019  9.880000  6.698214  6.422903  7.954667 11.092581 14.979333 19.175806
-    ## 2020 10.473226  8.331034  7.781935  9.038667 11.453548 15.614000 18.294516
     ##            Aug       Sep       Oct       Nov       Dec
     ## 1991 20.461935 20.039667 18.164516 15.802000 13.760645
     ## 1992 20.850968 19.647333 16.972581 15.051000 12.261290
@@ -291,26 +279,16 @@
     ## 1998 21.027097 21.206333 19.308065 16.501667 14.289677
     ## 1999 23.960000 22.668000 19.200968 16.607333 13.565484
     ## 2000 23.316452 22.512000 19.680323 16.217000 12.863548
-    ## 2001 22.169032 21.337000 18.409032 16.996000 15.409677
-    ## 2002 21.238387 20.819000 18.459032 14.740667 12.082903
-    ## 2003 19.038710 19.040333 17.338710 15.603000 12.564194
-    ## 2004 21.706129 20.307333 18.605161 15.799667 13.610968
-    ## 2005 23.466129 22.035333 19.150968 16.049000 12.673548
-    ## 2006 22.506129 22.018667 18.617742 15.711667 13.363871
-    ## 2007 22.142903 21.470333 19.270000 16.918667 13.654516
-    ## 2008 20.941935 20.797333 18.284516 15.386667 12.754839
-    ## 2009 20.032903 19.321667 17.106774 15.096000 12.432581
-    ## 2010 23.765806 22.794000 19.778065 17.214000 14.383226
-    ## 2011 22.178387 21.247000 17.935161 15.550000 12.001613
-    ## 2012 23.470645 24.142333 20.311613 16.902000 13.687742
-    ## 2013 22.711935 22.190667 18.767097 15.335000 13.000645
-    ## 2014 21.983871 20.889667 17.764839 15.253667 12.393226
-    ## 2015 23.270968 21.436667 17.810968 16.210667 13.603226
-    ## 2016 22.551613 22.058667 19.351290 15.763000 13.207097
-    ## 2017 20.840968 19.512667 17.129677 14.283000 13.481290
-    ## 2018 23.052581 22.056333 19.923871 16.869333 13.916452
-    ## 2019 23.165806 22.037333 19.078710 16.731000 13.512258
-    ## 2020 22.755161 22.006667 18.927419 15.446000 12.401290
+
+# SSTの時系列折れ線グラフ
+
+    SST_ts_source_plot <- autoplot(SST_ts) +
+      labs(y = expression(Temperature~(degree*C)), x = "Time") +
+      ggtitle("Sea surface temperature")
+
+    plot(SST_ts_source_plot)
+
+![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-4-1.png)
 
 # SST偏差系列の作成
 
@@ -331,7 +309,7 @@
     # 各観測に対応する月平均を展開
     clim <- monthly_mean[as.integer(mfac)]
 
-    # 4) アノマリー（海水温偏差）を計算
+    # 4) 海水温偏差を計算
     anom <- temp - clim
 
 
@@ -347,23 +325,68 @@
     ## May 1982  9.987097 -1.4334531
     ## Jun 1982 13.852333 -1.5439394
 
-# SSTの時系列折れ線グラフ
+# 月平均SSTのプロット
 
-    # 時系列折れ線グラフ
+    monthly_mean_fac_tidy = tibble(Month=factor(1:12,
+                                            levels=(1:12)),
+           SST=as.numeric(monthly_mean)
+           )
+
+    monthly_mean_tidy = tibble(Month=(1:12),
+           SST=as.numeric(monthly_mean)
+           )
+
+    head(monthly_mean_tidy)
+
+    ## # A tibble: 6 × 2
+    ##   Month   SST
+    ##   <int> <dbl>
+    ## 1     1 10.4 
+    ## 2     2  7.96
+    ## 3     3  7.02
+    ## 4     4  8.52
+    ## 5     5 11.4 
+    ## 6     6 15.4
+
+    plot_monthly_mean_SSST <- ggplot(data=monthly_mean_fac_tidy,
+                                     aes(x=Month,y=SST)
+                                     ) +
+      geom_point(size = 1) + 
+      geom_line(data=monthly_mean_tidy,
+                aes(x=Month,y=SST),linetype= "dashed") + 
+      #geom_smooth(method="loess", se =FALSE)
+      scale_x_discrete(
+        labels = function(x) sprintf("%02d", as.integer(x))
+      )
+      
+    plot_monthly_mean_SSST
+
+![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-6-1.png)
+
+# SST偏差系列のプロット：autoplot
+
+    autoplot(SST_dev_ts)
+
+![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-7-1.png)
+
+# SST偏差系列のプロット: ggplot
+
     SST_ts_plot <- autoplot(SST_dev_ts[,"Temp"]) +
-      labs(y = "Temperature (℃)", x = "Time") +
+      labs(y = expression(Temperature~(degree*C)), x = "Time") +
       ggtitle("Sea surface temperature")
 
     SST_dev_ts_plot <- autoplot(SST_dev_ts[,"Temp_dev"]) +
-      labs(y = "Temperature (℃)", x = "Time") +
+      labs(y = expression(Temperature~(degree*C)), x = "Time") +
       ggtitle("Sea surface temperature anomalies")
 
     # 並べる
-    gridExtra::grid.arrange(SST_ts_plot, 
-                            SST_dev_ts_plot,
-                            ncol = 1)
+    SST_ts_source_plot <- gridExtra::grid.arrange(SST_ts_plot,
+                                                  SST_dev_ts_plot,
+                                                  ncol = 1)
 
-![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-5-1.png)
+![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-8-1.png)
+
+    plot(SST_ts_source_plot)
 
 # 線形ガウス状態空間モデルの関数の定義
 
@@ -413,7 +436,8 @@
       # 最適化その1。まずはNelder-Mead法を用いて暫定的なパラメータを推定
       fit_ssm_bef <- fitSSM(
         build_ssm,
-        inits = c(-17,-30, 0.5, 0, -1, -3), # パラメータの初期値(任意)
+        #inits = c(-17,-30, 0.5, 0, -1, -3), # パラメータの初期値(任意)
+        inits = c(-13,-7, 0.9, -0.1, -0.3, -5), # パラメータの初期値(任意)
         update_func,
         method = "Nelder-Mead",
         control = list(maxit = 5000, reltol = 1e-16)
@@ -446,6 +470,11 @@
     fit_SST    <- list_SST[[1]]
     result_SST <- list_SST[[2]]
 
+# 推定結果の確認
+
+    print(fit_SST$optim.out$par) #モデルの推定パラメーター
+
+    ## [1] -13.3404402  -7.4582110   0.8734769  -0.1118677  -0.2843411  -4.6824333
 
     # 推定結果 -------------------------------------------------------------
 
@@ -453,38 +482,44 @@
     head(result_SST$alphahat)
 
     ##             level      slope sea_dummy1 sea_dummy2 sea_dummy3 sea_dummy4
-    ## Jan 1982 13.06744 0.01108338  -3.844236  -1.089913   1.723870   4.398153
-    ## Feb 1982 13.07852 0.01108378  -6.223356  -3.844236  -1.089913   1.723870
-    ## Mar 1982 13.08960 0.01108549  -7.286048  -6.223356  -3.844236  -1.089913
-    ## Apr 1982 13.10069 0.01108850  -5.843225  -7.286048  -6.223356  -3.844236
-    ## May 1982 13.11178 0.01108966  -2.713221  -5.843225  -7.286048  -6.223356
-    ## Jun 1982 13.12287 0.01109071   1.119661  -2.713221  -5.843225  -7.286048
+    ## Jan 1982 13.09262 0.01087899  -3.867104  -1.123972   1.689812   4.392057
+    ## Feb 1982 13.10349 0.01087928  -6.234119  -3.867104  -1.123972   1.689812
+    ## Mar 1982 13.11437 0.01088057  -7.279158  -6.234119  -3.867104  -1.123972
+    ## Apr 1982 13.12525 0.01088282  -5.831141  -7.279158  -6.234119  -3.867104
+    ## May 1982 13.13614 0.01088366  -2.705951  -5.831141  -7.279158  -6.234119
+    ## Jun 1982 13.14702 0.01088442   1.136169  -2.705951  -5.831141  -7.279158
     ##          sea_dummy5 sea_dummy6 sea_dummy7 sea_dummy8 sea_dummy9 sea_dummy10
-    ## Jan 1982   7.044628   8.016686   4.697003   1.119661  -2.713221   -5.843225
-    ## Feb 1982   4.398153   7.044628   8.016686   4.697003   1.119661   -2.713221
-    ## Mar 1982   1.723870   4.398153   7.044628   8.016686   4.697003    1.119661
-    ## Apr 1982  -1.089913   1.723870   4.398153   7.044628   8.016686    4.697003
-    ## May 1982  -3.844236  -1.089913   1.723870   4.398153   7.044628    8.016686
-    ## Jun 1982  -6.223356  -3.844236  -1.089913   1.723870   4.398153    7.044628
+    ## Jan 1982   7.063599   8.036486   4.723322   1.136169  -2.705951   -5.831141
+    ## Feb 1982   4.392057   7.063599   8.036486   4.723322   1.136169   -2.705951
+    ## Mar 1982   1.689812   4.392057   7.063599   8.036486   4.723322    1.136169
+    ## Apr 1982  -1.123972   1.689812   4.392057   7.063599   8.036486    4.723322
+    ## May 1982  -3.867104  -1.123972   1.689812   4.392057   7.063599    8.036486
+    ## Jun 1982  -6.234119  -3.867104  -1.123972   1.689812   4.392057    7.063599
     ##          sea_dummy11     arima1      arima2
-    ## Jan 1982   -7.286048  0.2894695 -0.02268035
-    ## Feb 1982   -5.843225  0.1194240 -0.03107498
-    ## Mar 1982   -2.713221 -0.5653593 -0.01282035
-    ## Apr 1982    1.119661 -1.1842401  0.06069215
-    ## May 1982    4.697003 -0.4182439  0.12712993
-    ## Jun 1982    8.016686 -0.3856892  0.04489910
+    ## Jan 1982   -7.279158  0.2869777 -0.02368293
+    ## Feb 1982   -5.831141  0.1048145 -0.03197027
+    ## Mar 1982   -2.705951 -0.5969186 -0.01167669
+    ## Apr 1982    1.136169 -1.2195174  0.06649873
+    ## May 1982    4.723322 -0.4507217  0.13585833
+    ## Jun 1982    8.036486 -0.4258073  0.05021190
+
+    level <- result_SST$alphahat[,"level"]
+    drift <- result_SST$alphahat[,"slope"]
+
+    level_ts <- ts(level, start = start(SST_ts), frequency = 12)
+    drift_ts <- ts(drift, start = start(SST_ts), frequency = 12)
+
+    # 年あたりの平均的な昇温率
+    mean_drift_year <- mean(drift_ts) * 12
+    print(mean_drift_year)
+
+    ## [1] 0.06768336
 
     # 係数の95%信頼区間
     res <- confint(result_SST, level = 0.95)
-    #res[c("Kuroshio")] %>% lapply(head, n = 1)
 
 
-    # 状態の可視化
-    #autoplot(
-    #  result_kuroshio$alphahat[, c("level", "slope", "sea_dummy1", "arima1")],
-    #  facets = TRUE
-    #)
-
+    # 成分別にプロット
     model_level_plot <- autoplot(result_SST$alphahat[,"level"]) +
       labs(y = "", x = "Time") +
       ggtitle("Level component")
@@ -508,7 +543,127 @@
                                   model_arima1_plot,
                                   ncol = 1)
 
-![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-7-1.png)
+![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-11-1.png)
+
+    plot(model_out_plot )
+
+# モデルの残差の確認
+
+    # 標準化残差
+    std_obs_resid <- rstandard(result_SST, type = "recursive")
+
+    #正規性の確認
+    resid_df <- data.frame(resid = std_obs_resid)
+
+    resid_dist_plot <- ggplot(resid_df, aes(x = resid)) +
+      geom_histogram(aes(y = after_stat(density)),
+                     bins = 30,
+                     fill = "grey70",
+                     color = "white") +
+      stat_function(fun = dnorm, linewidth = 1) +
+      labs(
+        title = "Histogram of standardized residuals",
+        x = "Standardized residual",
+        y = "Density"
+      ) +
+      theme_classic()
+    plot(resid_dist_plot)
+
+![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-12-1.png)
+
+    qqnorm(std_obs_resid)
+
+![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-12-2.png)
+
+    # 自己相関コレログラム
+    acf(std_obs_resid, na.action = na.pass)
+
+![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-12-3.png)
+
+    # Ljung–Box検定
+    # P > 0.05で残差に有意な自己相関なしと判断
+    Box.test(std_obs_resid,
+             lag = 24,
+             type = "Ljung-Box")
+
+    ## 
+    ##  Box-Ljung test
+    ## 
+    ## data:  std_obs_resid
+    ## X-squared = 23.325, df = 24, p-value = 0.5007
+
+# 水準変動の信頼区間の図示
+
+    level_tidy <- cbind(
+      data.frame(time=time(SST_ts),
+                 SST=as.numeric(SST_ts),
+                 level=level),
+      as.data.frame(res$level)
+      ) %>%
+      as_tibble()
+
+
+    level_plot <- ggplot(data=level_tidy,
+                             aes(x=time,y=SST)) +
+      labs(title="Level component",x="Year", y="SST") +
+      #geom_point(alpha = 0.5) +
+      geom_line(aes(y=level), size = 1.2) +
+      geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.3)
+
+    ggsave("level_plot.png",
+           width=6, height=4,
+           plot = level_plot)
+
+    level_plot
+
+![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-13-1.png)
+
+# ドリフト成分の図示
+
+    drift_tidy <- cbind(
+      data.frame(time=time(SST_ts),
+                 Temp=as.numeric(SST_ts),
+                 drift=drift),
+      as.data.frame(res$slope)
+      ) %>%
+      as_tibble()
+
+
+    annual_drift_lab <- paste0("average annual drift = ",round(mean_drift_year,3))
+    drift_plot <- ggplot(data=drift_tidy,
+                             aes(x=time,y=drift)) +
+      labs(title=paste0("Drift component: ",annual_drift_lab),
+           x="Year", y="Drift") +
+      geom_line(aes(y=drift), size = 1.2) +
+      geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.3) +
+      geom_hline(yintercept=0, linetype="dashed") 
+
+    ggsave("drift_plot.png",
+           width=6, height=4,
+           plot = drift_plot)
+
+    drift_plot
+
+![](SST_ts_analyses_files/figure-markdown_strict/unnamed-chunk-14-1.png)
+
+# 予測 ———————————————————————-
+
+    # 簡単な方法
+
+    forecast_pred <- predict(result_SST$model,
+                             interval="prediction",
+                             level = 0.95,
+                             n.ahead = 6)
+
+    print(forecast_pred)
+
+    ##                fit       lwr      upr
+    ## Jan 2026 10.910108  9.119202 12.70101
+    ## Feb 2026  8.843959  6.573132 11.11479
+    ## Mar 2026  8.344034  5.881440 10.80663
+    ## Apr 2026 10.166778  7.621817 12.71174
+    ## May 2026 13.047616 10.463373 15.63186
+    ## Jun 2026 17.077530 14.471921 19.68314
 
 # Rスクリプトの出力
 
@@ -516,6 +671,6 @@
                 output ="SST_ts_analyses.r",
                 documentation = 0)
 
-    ##   |                                                           |                                                   |   0%  |                                                           |...                                                |   6%                     |                                                           |......                                             |  12% [unnamed-chunk-17]  |                                                           |..........                                         |  19%                     |                                                           |.............                                      |  25% [unnamed-chunk-18]  |                                                           |................                                   |  31%                     |                                                           |...................                                |  38% [unnamed-chunk-19]  |                                                           |......................                             |  44%                     |                                                           |..........................                         |  50% [unnamed-chunk-20]  |                                                           |.............................                      |  56%                     |                                                           |................................                   |  62% [unnamed-chunk-21]  |                                                           |...................................                |  69%                     |                                                           |......................................             |  75% [unnamed-chunk-22]  |                                                           |.........................................          |  81%                     |                                                           |.............................................      |  88% [unnamed-chunk-23]  |                                                           |................................................   |  94%                     |                                                           |...................................................| 100% [unnamed-chunk-24]
+    ##   |                                                           |                                                   |   0%  |                                                           |..                                                 |   3%                     |                                                           |...                                                |   6% [unnamed-chunk-33]  |                                                           |.....                                              |   9%                     |                                                           |......                                             |  12% [unnamed-chunk-34]  |                                                           |........                                           |  16%                     |                                                           |..........                                         |  19% [unnamed-chunk-35]  |                                                           |...........                                        |  22%                     |                                                           |.............                                      |  25% [unnamed-chunk-36]  |                                                           |..............                                     |  28%                     |                                                           |................                                   |  31% [unnamed-chunk-37]  |                                                           |..................                                 |  34%                     |                                                           |...................                                |  38% [unnamed-chunk-38]  |                                                           |.....................                              |  41%                     |                                                           |......................                             |  44% [unnamed-chunk-39]  |                                                           |........................                           |  47%                     |                                                           |..........................                         |  50% [unnamed-chunk-40]  |                                                           |...........................                        |  53%                     |                                                           |.............................                      |  56% [unnamed-chunk-41]  |                                                           |..............................                     |  59%                     |                                                           |................................                   |  62% [unnamed-chunk-42]  |                                                           |.................................                  |  66%                     |                                                           |...................................                |  69% [unnamed-chunk-43]  |                                                           |.....................................              |  72%                     |                                                           |......................................             |  75% [unnamed-chunk-44]  |                                                           |........................................           |  78%                     |                                                           |.........................................          |  81% [unnamed-chunk-45]  |                                                           |...........................................        |  84%                     |                                                           |.............................................      |  88% [unnamed-chunk-46]  |                                                           |..............................................     |  91%                     |                                                           |................................................   |  94% [unnamed-chunk-47]  |                                                           |.................................................  |  97%                     |                                                           |...................................................| 100% [unnamed-chunk-48]
 
     ## [1] "SST_ts_analyses.r"

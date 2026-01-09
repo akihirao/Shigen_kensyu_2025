@@ -7,11 +7,6 @@ library(forecast)
 library(gridExtra)
 
 
-##作業場所の設定
-cur_dir <- getwd()
-#print(cur_dir)
-setwd(cur_dir)
-
 # initialize
 rm(list=ls(all=TRUE))
 
@@ -38,23 +33,27 @@ source <- "local" # local (default), url, or original
 
 
 if(source=="url"){ #ウェブサイトから海面水温データを読み込む場合
-  sea_are_id <- 113　#岩手県南部沿岸海域の例
+  sea_are_id <- 315　#113 岩手県南部沿岸海域の例; 122: 釧路地方沿岸; 709: 与那国島; 315:佐渡島
   url <- paste0("https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/txt/area",
                 sea_are_id,
-                "-past.txt")
+                ".txt")
 
   SST_info <- read_csv(url) %>% 
+    slice(-n()) %>%
     rename(Temp="Temp.") %>% 
+    mutate(Temp = as.numeric(Temp)) %>%
     mutate(date=as.Date(paste0(yyyy,"-",mm,"-",dd))) %>% 
-    select(c(date,Temp,flag))
+    select(c(date,Temp,flag)) %>% 
+    filter(date <= as.Date("2025-12-31"))
   
   #　SSTを月別平均に集約
   SST_monthly_avg <- SST_info %>% 
-    mutate(Time = floor_date(date, "month")) %>% 
+    mutate(Time = floor_date(date, unit = "month")) %>% 
     group_by(Time) %>% 
     summarise(Temp = mean(Temp, na.rm = TRUE))
 
   SST_ts <- SST_monthly_df2ts(SST_monthly_avg)
+  SST_ts <- window(SST_ts, end = c(2025,12))
   
   
 }else if(source=="local"){ #ローカルにある海面水温データファイルを読み込む場合
@@ -65,11 +64,12 @@ if(source=="url"){ #ウェブサイトから海面水温データを読み込む
   
   #　SSTを月別平均に集約
   SST_monthly_avg <- SST_info %>% 
-    mutate(Time = floor_date(date, "month")) %>% 
+    mutate(Time = floor_date(date, unit = "month")) %>% 
     group_by(Time) %>% 
     summarise(Temp = mean(Temp, na.rm = TRUE))
   
   SST_ts <- SST_monthly_df2ts(SST_monthly_avg)
+  SST_ts <- window(SST_ts, end = c(2025,12))
   
 }else if(source=="original"){ #ローカルに置いたオリジナルの海面水温データファイルを読み込む場合
   year_month_temp <- read_csv("SST_original.csv")
@@ -83,6 +83,14 @@ if(source=="url"){ #ウェブサイトから海面水温データを読み込む
   
 }
 
+
+#欠損データセットの作成
+if(FALSE){
+  half_point <- trunc(length(time(SST_ts))/2)
+  NA_point <- c(half_point:(half_point+96))
+  SST_ts[NA_point] <- NA 
+}
+
 head(SST_ts)
 
 
@@ -91,7 +99,13 @@ start(SST_ts)       # 開始（1982, 1）
 end(SST_ts)         # 終了（2025, 10）
 cycle(SST_ts)       # 各観測の月番号（1～12）
 time(SST_ts)        # 小数年（1982.000, 1982.083...）
-window(SST_ts, start = c(1991, 1), end = c(2020, 12))  # 期間抽出
+window(SST_ts, start = c(1991, 1), end = c(2000, 12))  # 期間抽出
+
+SST_ts_source_plot <- autoplot(SST_ts) +
+  labs(y = expression(Temperature~(degree*C)), x = "Time") +
+  ggtitle("Sea surface temperature")
+
+plot(SST_ts_source_plot)
 
 stopifnot(frequency(SST_ts) == 12)  # 月次であることの確認
 
@@ -110,7 +124,7 @@ monthly_mean <- tapply(temp, mfac, function(v) mean(v, na.rm = TRUE))
 # 各観測に対応する月平均を展開
 clim <- monthly_mean[as.integer(mfac)]
 
-# 4) アノマリー（海水温偏差）を計算
+# 4) 海水温偏差を計算
 anom <- temp - clim
 
 
@@ -118,19 +132,48 @@ SST_dev_ts <- cbind(Temp=SST_ts, Temp_dev=anom)
 
 head(SST_dev_ts)
 
-# 時系列折れ線グラフ
+
+monthly_mean_fac_tidy = tibble(Month=factor(1:12,
+                                        levels=(1:12)),
+       SST=as.numeric(monthly_mean)
+       )
+
+monthly_mean_tidy = tibble(Month=(1:12),
+       SST=as.numeric(monthly_mean)
+       )
+
+head(monthly_mean_tidy)
+
+plot_monthly_mean_SSST <- ggplot(data=monthly_mean_fac_tidy,
+                                 aes(x=Month,y=SST)
+                                 ) +
+  geom_point(size = 1) + 
+  geom_line(data=monthly_mean_tidy,
+            aes(x=Month,y=SST),linetype= "dashed") + 
+  #geom_smooth(method="loess", se =FALSE)
+  scale_x_discrete(
+    labels = function(x) sprintf("%02d", as.integer(x))
+  )
+  
+plot_monthly_mean_SSST
+
+autoplot(SST_dev_ts)
+
 SST_ts_plot <- autoplot(SST_dev_ts[,"Temp"]) +
-  labs(y = "Temperature (℃)", x = "Time") +
+  labs(y = expression(Temperature~(degree*C)), x = "Time") +
   ggtitle("Sea surface temperature")
 
 SST_dev_ts_plot <- autoplot(SST_dev_ts[,"Temp_dev"]) +
-  labs(y = "Temperature (℃)", x = "Time") +
+  labs(y = expression(Temperature~(degree*C)), x = "Time") +
   ggtitle("Sea surface temperature anomalies")
 
 # 並べる
-gridExtra::grid.arrange(SST_ts_plot, 
-                        SST_dev_ts_plot,
-                        ncol = 1)
+SST_ts_source_plot <- gridExtra::grid.arrange(SST_ts_plot,
+                                              SST_dev_ts_plot,
+                                              ncol = 1)
+
+
+plot(SST_ts_source_plot)
 
 make_ssm_SST <- function(ts_data) {
   # モデルの構造を決める
@@ -178,7 +221,8 @@ make_ssm_SST <- function(ts_data) {
   # 最適化その1。まずはNelder-Mead法を用いて暫定的なパラメータを推定
   fit_ssm_bef <- fitSSM(
     build_ssm,
-    inits = c(-17,-30, 0.5, 0, -1, -3), # パラメータの初期値(任意)
+    #inits = c(-17,-30, 0.5, 0, -1, -3), # パラメータの初期値(任意)
+    inits = c(-13,-7, 0.9, -0.1, -0.3, -5), # パラメータの初期値(任意)
     update_func,
     method = "Nelder-Mead",
     control = list(maxit = 5000, reltol = 1e-16)
@@ -210,23 +254,29 @@ fit_SST    <- list_SST[[1]]
 result_SST <- list_SST[[2]]
 
 
+print(fit_SST$optim.out$par) #モデルの推定パラメーター
+
 # 推定結果 -------------------------------------------------------------
 
 # 平滑化推定量
 head(result_SST$alphahat)
 
+level <- result_SST$alphahat[,"level"]
+drift <- result_SST$alphahat[,"slope"]
+
+level_ts <- ts(level, start = start(SST_ts), frequency = 12)
+drift_ts <- ts(drift, start = start(SST_ts), frequency = 12)
+
+# 年あたりの平均的な昇温率
+mean_drift_year <- mean(drift_ts) * 12
+print(mean_drift_year)
+
 
 # 係数の95%信頼区間
 res <- confint(result_SST, level = 0.95)
-#res[c("Kuroshio")] %>% lapply(head, n = 1)
 
 
-# 状態の可視化
-#autoplot(
-#  result_kuroshio$alphahat[, c("level", "slope", "sea_dummy1", "arima1")],
-#  facets = TRUE
-#)
-
+# 成分別にプロット
 model_level_plot <- autoplot(result_SST$alphahat[,"level"]) +
   labs(y = "", x = "Time") +
   ggtitle("Level component")
@@ -249,6 +299,95 @@ model_out_plot <- grid.arrange(model_level_plot,
                               model_season_plot,
                               model_arima1_plot,
                               ncol = 1)
+
+plot(model_out_plot )
+
+
+# 標準化残差
+std_obs_resid <- rstandard(result_SST, type = "recursive")
+
+#正規性の確認
+resid_df <- data.frame(resid = std_obs_resid)
+
+resid_dist_plot <- ggplot(resid_df, aes(x = resid)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 30,
+                 fill = "grey70",
+                 color = "white") +
+  stat_function(fun = dnorm, linewidth = 1) +
+  labs(
+    title = "Histogram of standardized residuals",
+    x = "Standardized residual",
+    y = "Density"
+  ) +
+  theme_classic()
+plot(resid_dist_plot)
+qqnorm(std_obs_resid)
+
+# 自己相関コレログラム
+acf(std_obs_resid, na.action = na.pass)
+
+# Ljung–Box検定
+# P > 0.05で残差に有意な自己相関なしと判断
+Box.test(std_obs_resid,
+         lag = 24,
+         type = "Ljung-Box")
+
+
+level_tidy <- cbind(
+  data.frame(time=time(SST_ts),
+             SST=as.numeric(SST_ts),
+             level=level),
+  as.data.frame(res$level)
+  ) %>%
+  as_tibble()
+
+
+level_plot <- ggplot(data=level_tidy,
+                         aes(x=time,y=SST)) +
+  labs(title="Level component",x="Year", y="SST") +
+  #geom_point(alpha = 0.5) +
+  geom_line(aes(y=level), size = 1.2) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.3)
+
+ggsave("level_plot.png",
+       width=6, height=4,
+       plot = level_plot)
+
+level_plot
+
+drift_tidy <- cbind(
+  data.frame(time=time(SST_ts),
+             Temp=as.numeric(SST_ts),
+             drift=drift),
+  as.data.frame(res$slope)
+  ) %>%
+  as_tibble()
+
+
+annual_drift_lab <- paste0("average annual drift = ",round(mean_drift_year,3))
+drift_plot <- ggplot(data=drift_tidy,
+                         aes(x=time,y=drift)) +
+  labs(title=paste0("Drift component: ",annual_drift_lab),
+       x="Year", y="Drift") +
+  geom_line(aes(y=drift), size = 1.2) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.3) +
+  geom_hline(yintercept=0, linetype="dashed") 
+
+ggsave("drift_plot.png",
+       width=6, height=4,
+       plot = drift_plot)
+
+drift_plot
+
+# 簡単な方法
+
+forecast_pred <- predict(result_SST$model,
+                         interval="prediction",
+                         level = 0.95,
+                         n.ahead = 6)
+
+print(forecast_pred)
 
 
 knitr::purl("SST_ts_analyses.Rmd", 
