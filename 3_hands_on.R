@@ -33,7 +33,7 @@ SST_monthly_df2ts <- function(SST_monthly_df){
 #https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/engan.html
 #上記のサイトから、対象の海域番号を調べる
 #（例えば、岩手県南部沿岸の海域番号は113)
-
+# #138: 茨城県南部沿岸; #113 岩手県南部沿岸海域の例; 122: 釧路地方沿岸; 709: 与那国島; 315:佐渡島; 306: 相模湾; 311: 遠州灘; 321: 福井県沿岸
 
 # 水温データのソースの指定: local, url, or, original
 source <- "local" # local (default), url, or original
@@ -41,7 +41,7 @@ source <- "local" # local (default), url, or original
 
 
 if(source=="url"){ #ウェブサイトから海面水温データを読み込む場合
-  sea_are_id <- 138　#138: 茨城県南部沿岸; #113 岩手県南部沿岸海域の例; 122: 釧路地方沿岸; 709: 与那国島; 315:佐渡島; 306: 相模湾; 311: 遠州灘; 321: 福井県沿岸
+  sea_are_id <- 138　#138: 茨城県南部沿岸
   url <- paste0("https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/txt/area",
                 sea_are_id,
                 ".txt")
@@ -65,7 +65,7 @@ if(source=="url"){ #ウェブサイトから海面水温データを読み込む
   
   
 }else if(source=="local"){ #ローカルにある海面水温データファイルを読み込む場合
-  SST_info <- read_csv("SST_area138.csv") %>%  #岩手県南部沿岸海域の海面水温データ（デフォルト）
+  SST_info <- read_csv("SST_area138.csv") %>%  #茨城県南部沿岸の海面水温データ（デフォルト）
     rename(Temp="Temp.") %>% 
     mutate(date=as.Date(paste0(yyyy,"-",mm,"-",dd))) %>% 
     select(c(date,Temp,flag))
