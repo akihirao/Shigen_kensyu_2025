@@ -669,20 +669,10 @@ head(alpha_hat_M1)
 #外生変数の効果の推定値
 #全時点で固定された係数(Q = 0)だが機械的な丸め誤差が生じるため最初の値を用いる
 beta_kuroshio_scaled <- alpha_hat_M1[,"Kuroshio_scaled"][1]
-print(beta_kuroshio_scaled)
+beta_kuroshio_scaled
 
-##外生変数の信頼区間
-state_names_M1 <- colnames(alpha_hat_M1)
-idx_M1 <- which(state_names_M1 == "Kuroshio_scaled")
-V_alpha_M1 <- result_M1$V #共分散行列の取り出し
-var_beta_M1 <- V_alpha_M1[1, idx_M1, idx_M1] #共分散行列からkuroshio_scaledの分散を取り出す（全時点で固定）
-se_beta_M1  <- sqrt(var_beta_M1)
-
-ci_95_beta_M1 <- c(
-  lower = beta_kuroshio_scaled  - 1.96 * se_beta_M1,
-  upper = beta_kuroshio_scaled  + 1.96 * se_beta_M1
-)
-print(ci_95_beta_M1)
+ci_95_beta_M1 <- res_M1[c("Kuroshio_scaled")] %>% lapply(head, n = 1)
+ci_95_beta_M1
 
 #元スケールに変換(黒潮続流北限緯度が 1 度北上すると SST は beta推定値だけ変化)
 sd_kuroshio <- sd(SST_Kuroshio_ts[,"Kuroshio"],na.rm=TRUE)
