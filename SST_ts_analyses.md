@@ -470,7 +470,8 @@
 
 
     # 平滑化推定量
-    head(result_M0$alphahat)
+    alpha_hat_M0 <- result_M0$alphahat
+    head(alpha_hat_M0)
 
     ##             level      slope sea_dummy1 sea_dummy2 sea_dummy3 sea_dummy4
     ## Jan 1982 17.45868 0.01625144  -3.470558  -1.801915  0.3388803  2.7790543
@@ -494,8 +495,8 @@
     ## May 1982    3.829011 1.2019851 -0.13603158
     ## Jun 1982    6.116810 0.7197574 -0.14975585
 
-    level_M0 <- result_M0$alphahat[,"level"]
-    drift_M0 <- result_M0$alphahat[,"slope"]
+    level_M0 <- alpha_hat_M0[,"level"]
+    drift_M0 <- alpha_hat_M0[,"slope"]
 
     level_M0_ts <- ts(level_M0, start = start(SST_ts), frequency = 12)
     drift_M0_ts <- ts(drift_M0, start = start(SST_ts), frequency = 12)
@@ -881,7 +882,8 @@
                       H        = exp(par_M1[6])) # 観察誤差の大きさ
 
     # 平滑化推定量
-    head(result_M1$alphahat)
+    alpha_hat_M1 <- result_M1$alphahat
+    head(alpha_hat_M1)
 
     ##          Kuroshio_scaled    level      slope sea_dummy1 sea_dummy2 sea_dummy3
     ## Jan 1982       0.2401847 17.52746 0.01760946  -3.515823  -1.865357  0.3524953
@@ -905,8 +907,40 @@
     ## May 1982    6.139335    3.929294 0.6570244 -0.08907040
     ## Jun 1982    5.193602    6.139335 0.7767933 -0.07670192
 
-    level_M1 <- result_M1$alphahat[,"level"]
-    drift_M1 <- result_M1$alphahat[,"slope"]
+    #外生変数の効果の推定値
+    #全時点で固定された係数(Q = 0)だが機械的な丸め誤差が生じるため最初の値を用いる
+    beta_kuroshio_scaled <- result_M1$alphahat[,"Kuroshio_scaled"][1]
+    print(beta_kuroshio_scaled)
+
+    ## [1] 0.2401847
+
+    state_names_M1 <- colnames(alpha_hat_M1)
+    idx_M1 <- which(state_names_M1 == "Kuroshio_scaled")
+
+    ##外生変数の信頼区間
+    V_alpha_M1 <- result_M1$V #共分散行列の取り出し
+    var_beta_M1 <- V_alpha_M1[1, idx_M1, idx_M1] #共分散行列からkuroshio_scaledの分散を取り出す（全時点で固定）
+    se_beta_M1  <- sqrt(var_beta_M1)
+
+
+    ci_95_beta_M1 <- c(
+      lower = beta_kuroshio_scaled  - 1.96 * se_beta_M1,
+      upper = beta_kuroshio_scaled  + 1.96 * se_beta_M1
+    )
+    print(ci_95_beta_M1)
+
+    ##     lower     upper 
+    ## 0.1444063 0.3359632
+
+    #元のスケールに変換(黒潮続流北限緯度が 1 度北上すると SST は beta推定値だけ変化)
+    sd_kuroshio <- sd(SST_Kuroshio_ts[,"Kuroshio"],na.rm=TRUE)
+    beta_kuroshio_per_deg <- beta_kuroshio_scaled /sd_kuroshio
+    print(beta_kuroshio_per_deg)
+
+    ## [1] 0.2346265
+
+    level_M1 <- alpha_hat_M1[,"level"]
+    drift_M1 <- alpha_hat_M1[,"slope"]
 
     level_M1_ts <- ts(level_M1, start = start(SST_ts), frequency = 12)
     drift_M1_ts <- ts(drift_M1, start = start(SST_ts), frequency = 12)
@@ -987,7 +1021,9 @@
     level_M1_tidy <- cbind(
       data.frame(time=time(SST_ts),
                  SST=as.numeric(SST_ts),
-                 level_M1=level_M1),
+                 level_M1=level_M1,
+                 level_kuroshio_scaled_M1=level_M1+beta_kuroshio_scaled*as.numeric(SST_Kuroshio_ts[,"Kuroshio_scaled"])
+      ),
       as.data.frame(res_M1$level)
       ) %>%
       as_tibble() %>%
@@ -999,6 +1035,7 @@
       labs(title="Level component",x="Year", y="SST") +
       #geom_point(alpha = 0.5) +
       geom_line(aes(y=level_M1), size = 1.2) +
+      geom_point(aes(y=level_kuroshio_scaled_M1), size = 0.6) +
       geom_ribbon(aes(ymin = lwr_M1, ymax = upr_M1), alpha = 0.3)
 
     ggsave("level_M1_plot.png",
