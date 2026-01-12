@@ -156,7 +156,6 @@ SST_dev_ts <- cbind(Temp=SST_ts, Temp_dev=anom)
 
 head(SST_dev_ts)
 
-#' 
 #' # 月平均SSTのプロット
 #' 
 ## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
@@ -171,6 +170,7 @@ monthly_mean_tidy = tibble(Month=(1:12),
        )
 
 head(monthly_mean_tidy)
+summary(monthly_mean_tidy)
 
 plot_monthly_mean_SST <- ggplot(data=monthly_mean_fac_tidy,
                                  aes(x=Month,y=SST)
@@ -178,12 +178,12 @@ plot_monthly_mean_SST <- ggplot(data=monthly_mean_fac_tidy,
   geom_point(size = 1) + 
   geom_line(data=monthly_mean_tidy,
             aes(x=Month,y=SST),linetype= "dashed") + 
-  #geom_smooth(method="loess", se =FALSE)
   scale_x_discrete(
     labels = function(x) sprintf("%02d", as.integer(x))
   )
   
 plot_monthly_mean_SST
+
 
 #' 
 #' # SST偏差系列のプロット：autoplot
@@ -311,7 +311,7 @@ par_comp_M0 <- c(Q_trend  = exp(par_M0[1]), # 年トレンドの大きさ
                   AR2      = artransform(par_M0[3:4])[2], # 2次のARの大きさ
                   Q_ar     = exp(par_M0[5]), # 短期変動の揺らぎ
                   H        = exp(par_M0[6])) # 観察誤差の大きさ
-
+par_comp_M0
 
 # 平滑化推定量
 alpha_hat_M0 <- result_M0$alphahat
@@ -678,6 +678,7 @@ par_comp_M1 <- c(Q_trend  = exp(par_M1[1]), # 年トレンドの大きさ
                   AR2      = artransform(par_M1[3:4])[2], # 2次のARの大きさ
                   Q_ar     = exp(par_M1[5]), # 短期変動の揺らぎ
                   H        = exp(par_M1[6])) # 観察誤差の大きさ
+par_comp_M1
 
 # 平滑化推定量
 alpha_hat_M1 <- result_M1$alphahat
@@ -685,17 +686,15 @@ head(alpha_hat_M1)
 
 #外生変数の効果の推定値
 #全時点で固定された係数(Q = 0)だが機械的な丸め誤差が生じるため最初の値を用いる
-beta_kuroshio_scaled <- result_M1$alphahat[,"Kuroshio_scaled"][1]
+beta_kuroshio_scaled <- alpha_hat_M1[,"Kuroshio_scaled"][1]
 print(beta_kuroshio_scaled)
 
+##外生変数の信頼区間
 state_names_M1 <- colnames(alpha_hat_M1)
 idx_M1 <- which(state_names_M1 == "Kuroshio_scaled")
-
-##外生変数の信頼区間
 V_alpha_M1 <- result_M1$V #共分散行列の取り出し
 var_beta_M1 <- V_alpha_M1[1, idx_M1, idx_M1] #共分散行列からkuroshio_scaledの分散を取り出す（全時点で固定）
 se_beta_M1  <- sqrt(var_beta_M1)
-
 
 ci_95_beta_M1 <- c(
   lower = beta_kuroshio_scaled  - 1.96 * se_beta_M1,
@@ -703,7 +702,7 @@ ci_95_beta_M1 <- c(
 )
 print(ci_95_beta_M1)
 
-#元のスケールに変換(黒潮続流北限緯度が 1 度北上すると SST は beta推定値だけ変化)
+#元スケールに変換(黒潮続流北限緯度が 1 度北上すると SST は beta推定値だけ変化)
 sd_kuroshio <- sd(SST_Kuroshio_ts[,"Kuroshio"],na.rm=TRUE)
 beta_kuroshio_per_deg <- beta_kuroshio_scaled /sd_kuroshio
 print(beta_kuroshio_per_deg)
@@ -784,8 +783,9 @@ level_M1_tidy <- cbind(
 
 level_M1_ggplot <- ggplot(data=level_M1_tidy,
                          aes(x=time,y=level_M1)) +
-  labs(title="Level component",x="Year", y="SST") +
-  #geom_point(alpha = 0.5) +
+  labs(title="Level component",
+       subtitle="Points indicate level plus effect of the exogenous variable",
+       x="Year", y="SST") +
   geom_line(aes(y=level_M1), size = 1.2) +
   geom_point(aes(y=level_kuroshio_scaled_M1), size = 0.6) +
   geom_ribbon(aes(ymin = lwr_M1, ymax = upr_M1), alpha = 0.3)
