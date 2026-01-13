@@ -115,34 +115,6 @@ plot(SST_ts_source_plot)
 
 
 
-# 月平均SSTのプロット ----------------------------
-
-monthly_mean_fac_tidy = tibble(Month=factor(1:12,
-                                            levels=(1:12)),
-                               SST=as.numeric(monthly_mean)
-)
-
-monthly_mean_tidy = tibble(Month=(1:12),
-                           SST=as.numeric(monthly_mean)
-)
-
-head(monthly_mean_tidy)
-summary(monthly_mean_tidy)
-
-plot_monthly_mean_SST <- ggplot(data=monthly_mean_fac_tidy,
-                                aes(x=Month,y=SST)
-) +
-  geom_point(size = 1) + 
-  geom_line(data=monthly_mean_tidy,
-            aes(x=Month,y=SST),linetype= "dashed") + 
-  #geom_smooth(method="loess", se =FALSE)
-  scale_x_discrete(
-    labels = function(x) sprintf("%02d", as.integer(x))
-  )
-
-plot_monthly_mean_SST
-
-
 
 # SST偏差系列の作成 ----------------------------
 
@@ -170,6 +142,37 @@ anom <- temp - clim
 SST_dev_ts <- cbind(Temp=SST_ts, Temp_dev=anom)
 
 head(SST_dev_ts)
+
+
+
+
+# 月平均SSTのプロット ----------------------------
+
+monthly_mean_fac_tidy = tibble(Month=factor(1:12,
+                                            levels=(1:12)),
+                               SST=as.numeric(monthly_mean)
+)
+
+monthly_mean_tidy = tibble(Month=(1:12),
+                           SST=as.numeric(monthly_mean)
+)
+
+head(monthly_mean_tidy)
+summary(monthly_mean_tidy)
+
+plot_monthly_mean_SST <- ggplot(data=monthly_mean_fac_tidy,
+                                aes(x=Month,y=SST)
+) +
+  geom_point(size = 1) + 
+  geom_line(data=monthly_mean_tidy,
+            aes(x=Month,y=SST),linetype= "dashed") + 
+  #geom_smooth(method="loess", se =FALSE)
+  scale_x_discrete(
+    labels = function(x) sprintf("%02d", as.integer(x))
+  )
+
+plot_monthly_mean_SST
+
 
 
 
@@ -291,6 +294,9 @@ res_M0 <- confint(result_M0, level = 0.95)
 
 # M0モデルの推定結果の確認 ----------------------------
 
+# 収束しているか？ (0が返ってくれば収束している、それ以外では非収束)
+fit_M0$optim.out$convergence
+
 par_M0 <- fit_M0$optim.out$par #モデルの推定パラメーター
 par_comp_M0 <- c(Q_trend  = exp(par_M0[1]), # 年トレンドの大きさ
                   Q_season = exp(par_M0[2]), # 季節トレンドの大きさ
@@ -312,9 +318,13 @@ level_M0_ts <- ts(level_M0, start = start(SST_ts), frequency = 12)
 drift_M0_ts <- ts(drift_M0, start = start(SST_ts), frequency = 12)
 
 # 馬場ら（2024)との比較のため, 2023年2月のドリフト成分の抽出
-window(drift_M0_ts, start=c(2023, 2), end=c(2023, 2))
+drift_2023Feb <- window(drift_M0_ts, start=c(2023, 2), end=c(2023, 2))
 
-# 年あたりの平均的な昇温率
+# 年あたりに換算した2023年2月時点の瞬間的な昇温率：報告値その１
+drift_2023Feb_per_year <- drift_2023Feb * 12
+print(drift_2023Feb_per_year)
+
+# 年あたりの平均的な昇温率：報告値その１
 mean_drift_year_M0 <- mean(drift_M0_ts) * 12
 print(mean_drift_year_M0)
 
@@ -654,6 +664,9 @@ res_M1 <- confint(result_M1, level = 0.95)
 
 # M1モデルの推定結果の確認 ----------------------------
 
+# 収束しているか？ (0が返ってくれば収束している、それ以外では非収束)
+fit_M1$optim.out$convergence
+
 par_M1 <- fit_M1$optim.out$par #モデルの推定パラメーター
 par_comp_M1 <- c(Q_trend  = exp(par_M1[1]), # 年トレンドの大きさ
                   Q_season = exp(par_M1[2]), # 季節トレンドの大きさ
@@ -680,8 +693,8 @@ beta_kuroshio_per_deg <- beta_kuroshio_scaled /sd_kuroshio
 print(beta_kuroshio_per_deg)
 
 
-level_M1 <- alpha_hat_M1$alphahat[,"level"]
-drift_M1 <- alpha_hat_M1$alphahat[,"slope"]
+level_M1 <- alpha_hat_M1[,"level"]
+drift_M1 <- alpha_hat_M1[,"slope"]
 
 level_M1_ts <- ts(level_M1, start = start(SST_ts), frequency = 12)
 drift_M1_ts <- ts(drift_M1, start = start(SST_ts), frequency = 12)
