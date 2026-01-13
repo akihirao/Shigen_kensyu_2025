@@ -327,9 +327,13 @@ level_M0_ts <- ts(level_M0, start = start(SST_ts), frequency = 12)
 drift_M0_ts <- ts(drift_M0, start = start(SST_ts), frequency = 12)
 
 # 馬場ら（2024)との比較のため, 2023年2月のドリフト成分の抽出
-window(drift_M0_ts, start=c(2023, 2), end=c(2023, 2))
+drift_M0_2023Feb <- window(drift_M0_ts, start=c(2023, 2), end=c(2023, 2))
 
-# 年あたりの平均的な昇温率
+# 年あたりに換算した2023年2月時点の瞬間的な昇温率：報告値その１
+drift_M0_2023Feb_per_year <- drift_M0_2023Feb*12
+print(drift_M0_2023Feb_per_year) 
+
+# 年あたりの平均的な昇温率：報告値その2
 mean_drift_year_M0 <- mean(drift_M0_ts) * 12
 print(mean_drift_year_M0)
 
@@ -709,9 +713,13 @@ level_M1_ts <- ts(level_M1, start = start(SST_ts), frequency = 12)
 drift_M1_ts <- ts(drift_M1, start = start(SST_ts), frequency = 12)
 
 # 馬場ら（2024)との比較のため, 2023年2月のドリフト成分の抽出
-window(drift_M1_ts, start=c(2023, 2), end=c(2023, 2))
+drift_M1_2023Feb <- window(drift_M1_ts, start=c(2023, 2), end=c(2023, 2))
 
-# 年あたりの平均的な昇温率
+# 年あたりに換算した2023年2月時点の瞬間的な昇温率:報告値その１
+drift_M1_2023Feb_per_year <- drift_M1_2023Feb*12
+print(drift_M1_2023Feb_per_year)
+
+# 年あたりの平均的な昇温率:報告値その２
 mean_drift_year_M1 <- mean(drift_M1_ts) * 12
 print(mean_drift_year_M1)
 
