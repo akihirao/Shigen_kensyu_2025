@@ -931,16 +931,16 @@ pred_M0 <- predict(
 pred_M1 <- predict(
   list_M1_train[[2]]$model, 
   newdata = SSModel(
-    H = exp(pars_M0[6]),
+    H = exp(pars_M1[6]),
     rep(NA, nrow(SST_Kuroshio_ts_test)) ~
       SSMtrend(degree = 2,
-               Q = c(list(0), list(exp(pars_M0[1])))) +
+               Q = c(list(0), list(exp(pars_M1[1])))) +
       SSMseasonal(sea.type = "dummy",
                   period = 12,
-                  Q = exp(pars_M0[2])) +
-      SSMarima(ar = artransform(pars_M0[3:4]),
+                  Q = exp(pars_M1[2])) +
+      SSMarima(ar = artransform(pars_M1[3:4]),
                d = 0,
-               Q = exp(pars_M0[5])) + 
+               Q = exp(pars_M1[5])) + 
         SSMregression(
           ~ Kuroshio_scaled, Q = 0
         ),
