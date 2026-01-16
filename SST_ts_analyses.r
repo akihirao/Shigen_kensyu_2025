@@ -4,10 +4,10 @@
 #' date: "`r Sys.Date()`"
 #' output:
 #'   md_document:
-#'   toc: true
-#' variant: markdown_github
-#' html_document:
-#'   toc: true
+#'     toc: true
+#'     variant: markdown_github
+#'   html_document:
+#'     toc: true
 #' ---
 #' 
 #' # 解析環境の設定
@@ -37,6 +37,7 @@ SST_monthly_df2ts <- function(SST_monthly_df){
     dplyr::select(-Time) %>%             # 日付列と秋冬フラグを削除
     ts(start = c(year(start_year_month), month(start_year_month)), 
       frequency = 12) # ts型に変換(1998年1月開始。12か月1周期)
+  return(SST_ts)
 }
 
 
@@ -50,13 +51,25 @@ SST_monthly_df2ts <- function(SST_monthly_df){
 source <- "local" # local (default), url, or original
 # local:　local環境にある提供データ: ulr: 気象庁公開のデータ; original: 自身が用意されたオリジナルデータ
 
+# 海域番号、海域名の対応表
+# https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/eg_areano.html
+# 例
+# 122: 釧路地方沿岸
+# 133: 岩手県南部沿岸
+# 315: 佐渡島
+# 321: 福井県沿岸
+# 709: 与那国島
 
 if(source=="url"){ #ウェブサイトから海面水温データを読み込む場合
-  sea_are_id <- 138　#138: 茨城県南部沿岸; #113 岩手県南部沿岸海域の例; 122: 釧路地方沿岸; 709: 与那国島; 315:佐渡島; 306: 相模湾; 311: 遠州灘; 321: 福井県沿岸
+  sea_area_id <- 138 #海域番号
   url <- paste0("https://www.data.jma.go.jp/kaiyou/data/db/kaikyo/series/engan/txt/area",
-                sea_are_id,
+                sea_area_id,
                 ".txt")
 
+  #読み込みデータの列名依存の確認 
+  tmp <- read_csv("url")
+  message("Columns in SST file: ", paste(names(tmp), collapse=", "))
+  
   SST_info <- read_csv(url) %>% 
     slice(-n()) %>%
     rename(Temp="Temp.") %>% 
@@ -76,7 +89,13 @@ if(source=="url"){ #ウェブサイトから海面水温データを読み込む
   
   
 }else if(source=="local"){ #ローカルにある海面水温データファイルを読み込む場合
-  SST_info <- read_csv("SST_area138.csv") %>%  #岩手県南部沿岸海域の海面水温データ（デフォルト）
+   
+  #読み込みデータの列名依存の確認 
+  tmp <- read_csv("SST_area138.csv")
+  message("Columns in SST file: ", paste(names(tmp), collapse=", "))
+  
+  #岩手県南部沿岸海域の海面水温データ（デフォルト）を読み込む
+  SST_info <- read_csv("SST_area138.csv") %>%  
     rename(Temp="Temp.") %>% 
     mutate(date=as.Date(paste0(yyyy,"-",mm,"-",dd))) %>% 
     select(c(date,Temp,flag))
@@ -189,17 +208,17 @@ plot_monthly_mean_SST
 #' # SST偏差系列のプロット：autoplot
 #' 
 ## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
-autoplot(SST_dev_ts)
+forecast::autoplot(SST_dev_ts)
 
 #' 
 #' # SST偏差系列のプロット: ggplot
 #' 
 ## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
-SST_ts_plot <- autoplot(SST_dev_ts[,"Temp"]) +
+SST_ts_plot <- forecast::autoplot(SST_dev_ts[,"Temp"]) +
   labs(y = expression(Temperature~(degree*C)), x = "Time") +
   ggtitle("Sea surface temperature")
 
-SST_dev_ts_plot <- autoplot(SST_dev_ts[,"Temp_dev"]) +
+SST_dev_ts_plot <- forecast::autoplot(SST_dev_ts[,"Temp_dev"]) +
   labs(y = expression(Temperature~(degree*C)), x = "Time") +
   ggtitle("Sea surface temperature anomalies")
 
@@ -238,22 +257,23 @@ make_ssm_M0 <- function(ts_data) {
   # optimに渡す前にパラメータをexpしたりartransformしたり、変換する
   # ほぼbuild_ssmと同じだが、パラメータだけ変更されている
   update_func <- function(pars, model) {
-    model <- SSModel(
+    return(
+    SSModel(
       H = exp(pars[6]),
       Temp ~
-        SSMtrend(degree = 2,
-                 Q = c(list(0), list(exp(pars[1])))) +
+        SSMtrend(
+          degree = 2,
+          Q = c(list(0), list(exp(pars[1])))) +
         SSMseasonal(
           sea.type = "dummy",
           period = 12,
-          Q = exp(pars[2])
-        ) +
+          Q = exp(pars[2])) +
         SSMarima(
           ar = artransform(pars[3:4]),
           d = 0,
-          Q = exp(pars[5])
-        ),
+          Q = exp(pars[5])),
       data = ts_data
+      )
     )
   }
   
@@ -372,7 +392,7 @@ plot(M0_out_plot)
 # 標準化残差
 std_obs_resid_M0 <- rstandard(result_M0, type = "recursive")
 
-# forecastパッケージのcheckredisual関数で残差のチェック
+# forecastパッケージのcheckredisuals関数で残差のチェック
 # Ljung–Box検定: P > 0.05で残差に有意な自己相関なしと判断
 checkresiduals(std_obs_resid_M0)
 
@@ -459,8 +479,9 @@ print(forecast_pred_M0)
 ## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 # 欠損データセットの作成
 # 時系列データの半期から８年の観測値を欠損とする
-half_point <- trunc(length(time(SST_ts))/2)
-NA_point <- c(half_point:(half_point+96))
+n <- length(SST_ts)
+half_point <- trunc(n/2)
+NA_point <- seq(half_point, min(half_point + 96, n))
 SST_NA_ts <- SST_ts
 SST_NA_ts[NA_point] <- NA 
 
@@ -480,19 +501,19 @@ result_M0_NA <- list_M0_NA[[2]]
 
 
 # 成分別にプロット
-level_M0_NA_plot <- autoplot(result_M0_NA$alphahat[,"level"]) +
+level_M0_NA_plot <- forecast::autoplot(result_M0_NA$alphahat[,"level"]) +
   labs(y = "", x = "Time") +
   ggtitle("Level component")
 
-drift_M0_NA_plot <- autoplot(result_M0_NA$alphahat[,"slope"]) +
+drift_M0_NA_plot <- forecast::autoplot(result_M0_NA$alphahat[,"slope"]) +
   labs(y = "", x = "Time") +
   ggtitle("Drift component")
 
-season_M0_NA_plot <- autoplot(result_M0_NA$alphahat[,"sea_dummy1"]) +
+season_M0_NA_plot <- forecast::autoplot(result_M0_NA$alphahat[,"sea_dummy1"]) +
   labs(y = "", x = "Time") +
   ggtitle("Seasonal component")
 
-arima1_M0_NA_plot <- autoplot(result_M0_NA$alphahat[,"arima1"]) +
+arima1_M0_NA_plot <- forecast::autoplot(result_M0_NA$alphahat[,"arima1"]) +
   labs(y = "", x = "Time") +
   ggtitle("Auto-regression component")
 
@@ -557,15 +578,15 @@ head(SST_Kuroshio_ts)
 #' 
 ## ----message = FALSE, warning = FALSE, echo = TRUE----------------------------
 # 時系列折れ線グラフ
-SST_ts_plot2 <- autoplot(SST_Kuroshio_ts[,"Temp"]) +
+SST_ts_plot2 <- forecast::autoplot(SST_Kuroshio_ts[,"Temp"]) +
   labs(y = expression(Temperature~(degree*C)), x = "Time") +
   ggtitle("Sea surface temperature")
 
-SST_dev_ts_plot2 <- autoplot(SST_Kuroshio_ts[,"Temp_dev"]) +
+SST_dev_ts_plot2 <- forecast::autoplot(SST_Kuroshio_ts[,"Temp_dev"]) +
   labs(y = expression(Temperature~(degree*C)), x = "Time") +
   ggtitle("Sea surface temperature anomalies")
 
-Kuroshio_ts_plot <- autoplot(SST_Kuroshio_ts[,"Kuroshio"]) +
+Kuroshio_ts_plot <- forecast::autoplot(SST_Kuroshio_ts[,"Kuroshio"]) +
   labs(y = "Latitude (degree)", x = "Time") +
   ggtitle("North limit of Kuroshio extension")
 
@@ -608,25 +629,24 @@ make_ssm_M1 <- function(ts_data) {
   # optimに渡す前にパラメータをexpしたりartransformしたり、変換する
   # ほぼbuild_ssmと同じだが、パラメータだけ変更されている
   update_func <- function(pars, model) {
-    model <- SSModel(
-      H = exp(pars[6]),
-      Temp ~
-        SSMtrend(degree = 2,
-                 Q = c(list(0), list(exp(pars[1])))) +
-        SSMseasonal(
-          sea.type = "dummy",
-          period = 12,
-          Q = exp(pars[2])
-        ) +
-        SSMarima(
-          ar = artransform(pars[3:4]),
-          d = 0,
-          Q = exp(pars[5])
-        ) + 
-        SSMregression(
-          ~ Kuroshio_scaled, Q = 0
-        ), # 外生変数
-      data = ts_data
+    return(
+      SSModel(
+        H = exp(pars[6]),
+        Temp ~
+          SSMtrend(
+            degree = 2,
+            Q = c(list(0), list(exp(pars[1])))) +
+          SSMseasonal(
+            sea.type = "dummy",
+            period = 12,
+            Q = exp(pars[2])) +
+          SSMarima(
+            ar = artransform(pars[3:4]),
+            d = 0,
+            Q = exp(pars[5])) + 
+          SSMregression(
+            ~ Kuroshio_scaled, Q = 0), # 外生変数
+      data = ts_data)
     )
   }
   
@@ -757,7 +777,7 @@ plot(M1_out_plot )
 # 標準化残差
 std_obs_resid_M1 <- rstandard(result_M1, type = "recursive")
 
-# forecastパッケージのcheckredisual関数で残差のチェック
+# forecastパッケージのcheckredisuals関数で残差のチェック
 # Ljung–Box検定: P > 0.05で残差に有意な自己相関なしと判断
 checkresiduals(std_obs_resid_M1)
 
